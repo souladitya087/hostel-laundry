@@ -46,6 +46,8 @@ def root():
         "database": db_info,
         "docs_url": "/docs",
         "api_endpoints": [
+            f"{settings.API_PREFIX}/auth/login",
+            f"{settings.API_PREFIX}/auth/demo-users",
             f"{settings.API_PREFIX}/students",
             f"{settings.API_PREFIX}/services",
             f"{settings.API_PREFIX}/slots",

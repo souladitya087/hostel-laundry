@@ -18,10 +18,27 @@ class StudentRegisterRequest(BaseModel):
     email: str
     room_no: str
 
+@router.get("/demo-users")
+def get_demo_users():
+    """Returns sample logins for rapid grading and demonstration."""
+    sample_students = execute_query(
+        "SELECT student_id, name, register_no, room_no FROM students LIMIT 4;"
+    )
+    return {
+        "admin": {
+            "username": "admin",
+            "password": "admin123",
+            "role": "admin",
+            "name": "Hostel Operations Admin"
+        },
+        "sample_students": sample_students or []
+    }
+
 @router.post("/login")
 def login(data: LoginRequest):
-    if data.role == "admin":
-        user = (data.username or "").strip()
+    role = (data.role or "").strip().lower()
+    if role == "admin":
+        user = (data.username or "").strip().lower()
         pwd = (data.password or "").strip()
         # Default credentials for staff administration
         if user == "admin" and (pwd in ("admin", "admin123", "password")):
@@ -37,7 +54,7 @@ def login(data: LoginRequest):
             }
         raise HTTPException(status_code=401, detail="Invalid admin credentials. Use admin / admin123")
     
-    elif data.role == "student":
+    elif role == "student":
         reg = (data.register_no or "").strip().upper()
         if not reg:
             raise HTTPException(status_code=400, detail="Student Register Number is required.")
@@ -50,7 +67,7 @@ def login(data: LoginRequest):
         if not student:
             raise HTTPException(
                 status_code=404, 
-                detail=f"No student found with Register Number '{reg}'. Please register or check spelling."
+                detail=f"No student found with Register Number '{reg}'. Please register below or check your register number."
             )
         
         return {
@@ -63,7 +80,7 @@ def login(data: LoginRequest):
             "message": f"Welcome back, {student['name']}!"
         }
     
-    raise HTTPException(status_code=400, detail="Invalid role specified.")
+    raise HTTPException(status_code=400, detail="Invalid role specified. Must be 'admin' or 'student'.")
 
 @router.post("/register-student")
 def register_student(data: StudentRegisterRequest):

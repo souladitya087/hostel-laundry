@@ -6,13 +6,15 @@ import {
   ShieldCheck, 
   PlusCircle, 
   RotateCcw,
-  Menu
+  Menu,
+  LogOut,
+  GraduationCap
 } from 'lucide-react';
 import { api } from '../services/api';
 
 export default function Navbar({ 
-  role, 
-  setRole, 
+  currentUser,
+  onSignOut,
   onOpenNewBooking, 
   onToggleMobileMenu,
   onRefreshData
@@ -48,6 +50,8 @@ export default function Navbar({
     }
   };
 
+  const isAdmin = currentUser?.role === 'admin';
+
   return (
     <header className="navbar">
       <div className="navbar-left">
@@ -80,43 +84,60 @@ export default function Navbar({
           </div>
         )}
 
-        {/* Role Switcher */}
-        <div className="role-switcher">
-          <button 
-            className={`role-btn ${role === 'admin' ? 'active' : ''}`}
-            onClick={() => setRole('admin')}
-            title="Full Management & Staff Controls"
-          >
-            <ShieldCheck size={14} />
-            <span>Staff Admin</span>
-          </button>
-          <button 
-            className={`role-btn ${role === 'student' ? 'active' : ''}`}
-            onClick={() => setRole('student')}
-            title="Student Slot Booking & Pickup View"
-          >
-            <UserCheck size={14} />
-            <span>Student</span>
-          </button>
-        </div>
+        {/* Current User Session Profile Badge */}
+        {currentUser && (
+          <div className={`user-session-badge ${isAdmin ? 'badge-admin' : 'badge-student'}`}>
+            {isAdmin ? (
+              <>
+                <ShieldCheck size={16} className="user-badge-icon" />
+                <div className="user-badge-text">
+                  <span className="user-badge-title">Staff Admin</span>
+                  <span className="user-badge-sub">Hostel Desk</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <GraduationCap size={16} className="user-badge-icon" />
+                <div className="user-badge-text">
+                  <span className="user-badge-title">{currentUser.name}</span>
+                  <span className="user-badge-sub">{currentUser.register_no} • {currentUser.room_no}</span>
+                </div>
+              </>
+            )}
+          </div>
+        )}
 
-        {/* Quick Actions */}
-        <button 
-          className="btn btn-secondary btn-sm reseed-btn" 
-          onClick={handleReseed}
-          disabled={isReseeding}
-          title="One-click DB Reset & Seed Data for Presentation Demo"
-        >
-          <RotateCcw size={14} className={isReseeding ? 'spin-anim' : ''} />
-          <span className="hide-mobile">Reseed DB</span>
-        </button>
+        {/* Admin-only Database Reseed Action */}
+        {isAdmin && (
+          <button 
+            className="btn btn-secondary btn-sm reseed-btn" 
+            onClick={handleReseed}
+            disabled={isReseeding}
+            title="One-click DB Reset & Seed Data for Presentation Demo"
+          >
+            <RotateCcw size={14} className={isReseeding ? 'spin-anim' : ''} />
+            <span className="hide-mobile">Reseed DB</span>
+          </button>
+        )}
 
+        {/* Quick Booking Button */}
         <button 
           className="btn btn-primary btn-sm" 
           onClick={onOpenNewBooking}
+          title={isAdmin ? "Create laundry booking for any student" : "Book laundry slot for yourself"}
         >
           <PlusCircle size={15} />
           <span>New Booking</span>
+        </button>
+
+        {/* Sign Out / Switch User Action */}
+        <button 
+          className="btn btn-ghost btn-sm signout-btn"
+          onClick={onSignOut}
+          title="Sign out or switch between Student & Admin portal"
+        >
+          <LogOut size={15} />
+          <span className="hide-mobile">Sign Out</span>
         </button>
       </div>
     </header>

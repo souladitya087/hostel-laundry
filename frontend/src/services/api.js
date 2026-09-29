@@ -27,6 +27,11 @@ async function request(endpoint, options = {}) {
 }
 
 export const api = {
+  // Authentication
+  login: (data) => request('/auth/login', { method: 'POST', body: JSON.stringify(data) }),
+  registerStudent: (data) => request('/auth/register-student', { method: 'POST', body: JSON.stringify(data) }),
+  getDemoUsers: () => request('/auth/demo-users'),
+
   // Database Admin
   getDbStatus: () => request('/db-admin/status'),
   reseedDatabase: () => request('/db-admin/reseed', { method: 'POST' }),

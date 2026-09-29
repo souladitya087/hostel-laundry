@@ -8,7 +8,9 @@ import {
   BarChart3, 
   FileCode2, 
   X,
-  Smartphone
+  Smartphone,
+  GraduationCap,
+  ShieldCheck
 } from 'lucide-react';
 
 export default function Sidebar({ 
@@ -18,8 +20,10 @@ export default function Sidebar({
   setIsMobileOpen,
   role 
 }) {
-  const navItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  const isAdmin = role === 'admin';
+
+  const adminNavItems = [
+    { id: 'dashboard', label: 'Operations Dashboard', icon: LayoutDashboard },
     { id: 'bookings', label: 'Bookings & Orders', icon: CalendarCheck },
     { id: 'slots', label: 'Slot Schedules', icon: Clock },
     { id: 'students', label: 'Hostel Students', icon: Users },
@@ -27,6 +31,16 @@ export default function Sidebar({
     { id: 'reports', label: 'Reports & Analytics', icon: BarChart3 },
     { id: 'dbms', label: 'DBMS SQL & Views', icon: FileCode2 },
   ];
+
+  const studentNavItems = [
+    { id: 'dashboard', label: 'My Dashboard', icon: LayoutDashboard },
+    { id: 'bookings', label: 'My Orders & Receipts', icon: CalendarCheck },
+    { id: 'slots', label: 'Available Slots', icon: Clock },
+    { id: 'services', label: 'Services & Rates', icon: Shirt },
+    { id: 'dbms', label: 'DBMS Specifications', icon: FileCode2 },
+  ];
+
+  const navItems = isAdmin ? adminNavItems : studentNavItems;
 
   const handleSelectTab = (id) => {
     setCurrentTab(id);
@@ -53,6 +67,20 @@ export default function Sidebar({
           >
             <X size={20} />
           </button>
+        </div>
+
+        <div className="sidebar-role-indicator">
+          {isAdmin ? (
+            <div className="role-pill-admin">
+              <ShieldCheck size={14} />
+              <span>STAFF ADMIN CONSOLE</span>
+            </div>
+          ) : (
+            <div className="role-pill-student">
+              <GraduationCap size={14} />
+              <span>STUDENT PORTAL</span>
+            </div>
+          )}
         </div>
 
         <div className="sidebar-section-title">MAIN MENU</div>
@@ -109,13 +137,23 @@ export default function Sidebar({
           <Clock size={20} />
           <span>Slots</span>
         </button>
-        <button 
-          className={`bottom-nav-item ${currentTab === 'reports' ? 'active' : ''}`}
-          onClick={() => setCurrentTab('reports')}
-        >
-          <BarChart3 size={20} />
-          <span>Reports</span>
-        </button>
+        {isAdmin ? (
+          <button 
+            className={`bottom-nav-item ${currentTab === 'reports' ? 'active' : ''}`}
+            onClick={() => setCurrentTab('reports')}
+          >
+            <BarChart3 size={20} />
+            <span>Reports</span>
+          </button>
+        ) : (
+          <button 
+            className={`bottom-nav-item ${currentTab === 'services' ? 'active' : ''}`}
+            onClick={() => setCurrentTab('services')}
+          >
+            <Shirt size={20} />
+            <span>Pricing</span>
+          </button>
+        )}
       </nav>
     </>
   );
