@@ -8,13 +8,14 @@ import {
   User, 
   CreditCard, 
   AlertCircle, 
-  CheckCircle,
-  Sparkles,
-  ShoppingBag
+  CheckCircle, 
+  Sparkles, 
+  ShoppingBag,
+  GraduationCap
 } from 'lucide-react';
 import { api } from '../services/api';
 
-export default function NewBookingModal({ isOpen, onClose, onBookingCreated }) {
+export default function NewBookingModal({ isOpen, onClose, onBookingCreated, currentUser }) {
   const [step, setStep] = useState(1);
   const [students, setStudents] = useState([]);
   const [slots, setSlots] = useState([]);
@@ -66,7 +67,11 @@ export default function NewBookingModal({ isOpen, onClose, onBookingCreated }) {
       setServices(servicesData);
 
       // Default select first available slot and student if present
-      if (studentsData.length > 0) setSelectedStudentId(studentsData[0].student_id);
+      if (currentUser?.role === 'student' && currentUser.student_id) {
+        setSelectedStudentId(currentUser.student_id);
+      } else if (studentsData.length > 0) {
+        setSelectedStudentId(studentsData[0].student_id);
+      }
       if (slotsData.length > 0) setSelectedSlotId(slotsData[0].slot_id);
 
       // Default 1 quantity for first service (Wash & Fold)
@@ -221,20 +226,33 @@ export default function NewBookingModal({ isOpen, onClose, onBookingCreated }) {
           <form onSubmit={handleSubmit} className="booking-form">
             {/* Step 1: Select Student */}
             <div className="form-section">
-              <label className="form-label">1. Select Student</label>
-              <select 
-                className="form-select"
-                value={selectedStudentId}
-                onChange={e => setSelectedStudentId(e.target.value)}
-                required
-              >
-                <option value="">-- Choose Student --</option>
-                {students.map(std => (
-                  <option key={std.student_id} value={std.student_id}>
-                    {std.name} ({std.register_no}) - Room {std.room_no}
-                  </option>
-                ))}
-              </select>
+              <label className="form-label">1. Student Details</label>
+              {currentUser?.role === 'student' ? (
+                <div className="locked-student-card">
+                  <div className="locked-student-avatar">
+                    <GraduationCap size={20} className="text-primary" />
+                  </div>
+                  <div className="locked-student-info">
+                    <strong>{currentUser.name}</strong>
+                    <span>{currentUser.register_no} • Hostel Room {currentUser.room_no}</span>
+                  </div>
+                  <span className="badge badge-completed" style={{ marginLeft: 'auto' }}>Verified</span>
+                </div>
+              ) : (
+                <select 
+                  className="form-select"
+                  value={selectedStudentId}
+                  onChange={e => setSelectedStudentId(e.target.value)}
+                  required
+                >
+                  <option value="">-- Choose Student --</option>
+                  {students.map(std => (
+                    <option key={std.student_id} value={std.student_id}>
+                      {std.name} ({std.register_no}) - Room {std.room_no}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
 
             {/* Step 2: Select Slot with Capacity */}

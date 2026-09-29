@@ -10,11 +10,16 @@ import {
   CheckCircle2, 
   XCircle, 
   AlertCircle,
-  QrCode
+  QrCode,
+  GraduationCap,
+  ShieldCheck
 } from 'lucide-react';
 import { api } from '../services/api';
 
-export default function BookingsView({ onOpenNewBooking, onViewReceipt }) {
+export default function BookingsView({ currentUser, onOpenNewBooking, onViewReceipt }) {
+  const isAdmin = currentUser?.role === 'admin';
+  const isStudent = currentUser?.role === 'student';
+
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -23,7 +28,7 @@ export default function BookingsView({ onOpenNewBooking, onViewReceipt }) {
 
   useEffect(() => {
     loadBookings();
-  }, [statusFilter]);
+  }, [statusFilter, currentUser]);
 
   const loadBookings = async () => {
     setLoading(true);
@@ -31,6 +36,10 @@ export default function BookingsView({ onOpenNewBooking, onViewReceipt }) {
       const params = {};
       if (statusFilter) params.status = statusFilter;
       if (searchQuery) params.q = searchQuery;
+      // If student, strictly constrain query to their student_id
+      if (isStudent && currentUser?.student_id) {
+        params.student_id = currentUser.student_id;
+      }
       const data = await api.getBookings(params);
       setBookings(data);
     } catch (err) {
@@ -46,6 +55,7 @@ export default function BookingsView({ onOpenNewBooking, onViewReceipt }) {
   };
 
   const handleStatusChange = async (bookingId, newStatus) => {
+    if (!isAdmin) return;
     setUpdatingId(bookingId);
     try {
       await api.updateBookingStatus(bookingId, newStatus);
@@ -82,12 +92,16 @@ export default function BookingsView({ onOpenNewBooking, onViewReceipt }) {
       {/* Top Header */}
       <div className="view-header-row">
         <div>
-          <h2>Laundry Bookings & Orders</h2>
-          <p className="view-header-desc">Manage student bookings, process clothes, and issue receipts</p>
+          <h2>{isAdmin ? 'Laundry Bookings & Orders' : 'My Laundry Orders & Receipts'}</h2>
+          <p className="view-header-desc">
+            {isAdmin 
+              ? 'Manage student bookings, process clothes, and issue official receipts' 
+              : `Tracking active wardrobe requests for ${currentUser?.name || 'Student'} (${currentUser?.register_no})`}
+          </p>
         </div>
         <button className="btn btn-primary" onClick={onOpenNewBooking}>
           <Plus size={16} />
-          <span>New Booking</span>
+          <span>{isAdmin ? 'New Booking' : 'Book Laundry Slot'}</span>
         </button>
       </div>
 
@@ -113,7 +127,7 @@ export default function BookingsView({ onOpenNewBooking, onViewReceipt }) {
             <input 
               type="text" 
               className="search-input" 
-              placeholder="Search by student, register no, or pickup code..."
+              placeholder={isAdmin ? "Search by student, register no, or pickup code..." : "Search by pickup code or date..."}
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
             />
@@ -133,7 +147,9 @@ export default function BookingsView({ onOpenNewBooking, onViewReceipt }) {
           </div>
         ) : bookings.length === 0 ? (
           <div className="empty-notice" style={{ padding: '40px' }}>
-            No bookings found matching criteria.
+            {isStudent 
+              ? "You haven't made any laundry bookings matching this criteria yet."
+              : "No bookings found matching criteria."}
           </div>
         ) : (
           <table className="data-table">
@@ -155,7 +171,7 @@ export default function BookingsView({ onOpenNewBooking, onViewReceipt }) {
                   <td>
                     <div className="token-cell">
                       <span className="token-code-pill">{b.pickup_code}</span>
-                      <span className="date-subtext">ID #{b.booking_id}</span>
+                      <span className="date-subtext">Order #{b.booking_id}</span>
                     </div>
                   </td>
                   <td>
@@ -184,19 +200,24 @@ export default function BookingsView({ onOpenNewBooking, onViewReceipt }) {
                     </span>
                   </td>
                   <td>
-                    {/* Status Dropdown */}
-                    <select
-                      className="status-select-input"
-                      value={b.booking_status}
-                      disabled={updatingId === b.booking_id}
-                      onChange={e => handleStatusChange(b.booking_id, e.target.value)}
-                    >
-                      <option value="Pending">Pending</option>
-                      <option value="In Progress">In Progress</option>
-                      <option value="Ready for Pickup">Ready for Pickup</option>
-                      <option value="Completed">Completed</option>
-                      <option value="Cancelled">Cancelled</option>
-                    </select>
+                    {isAdmin ? (
+                      /* Admin Editable Dropdown */
+                      <select
+                        className="status-select-input"
+                        value={b.booking_status}
+                        disabled={updatingId === b.booking_id}
+                        onChange={e => handleStatusChange(b.booking_id, e.target.value)}
+                      >
+                        <option value="Pending">Pending</option>
+                        <option value="In Progress">In Progress</option>
+                        <option value="Ready for Pickup">Ready for Pickup</option>
+                        <option value="Completed">Completed</option>
+                        <option value="Cancelled">Cancelled</option>
+                      </select>
+                    ) : (
+                      /* Student Read-Only Badge */
+                      getStatusBadge(b.booking_status)
+                    )}
                   </td>
                   <td style={{ textAlign: 'right' }}>
                     <button 

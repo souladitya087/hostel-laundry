@@ -8,11 +8,13 @@ import {
   Tag, 
   X,
   AlertCircle,
-  CheckCircle2
+  CheckCircle2,
+  Info
 } from 'lucide-react';
 import { api } from '../services/api';
 
-export default function ServicesView() {
+export default function ServicesView({ currentUser }) {
+  const isAdmin = currentUser?.role === 'admin';
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -34,7 +36,7 @@ export default function ServicesView() {
   const loadServices = async () => {
     setLoading(true);
     try {
-      const data = await api.getServices(true);
+      const data = await api.getServices(!isAdmin ? false : true);
       setServices(data);
     } catch (err) {
       console.error('Failed to load services:', err);
@@ -44,6 +46,7 @@ export default function ServicesView() {
   };
 
   const openAddModal = () => {
+    if (!isAdmin) return;
     setEditingService(null);
     setFormData({
       service_name: '',
@@ -57,6 +60,7 @@ export default function ServicesView() {
   };
 
   const openEditModal = (srv) => {
+    if (!isAdmin) return;
     setEditingService(srv);
     setFormData({
       service_name: srv.service_name,
@@ -71,6 +75,7 @@ export default function ServicesView() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!isAdmin) return;
     setSubmitting(true);
     setError('');
     try {
@@ -100,14 +105,27 @@ export default function ServicesView() {
     <div className="view-container">
       <div className="view-header-row">
         <div>
-          <h2>Laundry Services & Pricing Catalog</h2>
-          <p className="view-header-desc">Manage standard washing, dry cleaning rates, and garment turnaround guarantees</p>
+          <h2>{isAdmin ? 'Laundry Services & Pricing Catalog' : 'Laundry Service Tariffs & Timelines'}</h2>
+          <p className="view-header-desc">
+            {isAdmin 
+              ? 'Manage standard washing, dry cleaning rates, and garment turnaround guarantees' 
+              : 'Official university laundry catalog with standardized pricing per garment piece and turnaround days'}
+          </p>
         </div>
-        <button className="btn btn-primary" onClick={openAddModal}>
-          <Plus size={16} />
-          <span>Add New Service</span>
-        </button>
+        {isAdmin && (
+          <button className="btn btn-primary" onClick={openAddModal}>
+            <Plus size={16} />
+            <span>Add New Service</span>
+          </button>
+        )}
       </div>
+
+      {!isAdmin && (
+        <div className="info-banner glass-panel">
+          <Info size={18} className="text-primary" />
+          <span>All charges are automatically computed per garment count. Turnaround represents business days required before counter collection.</span>
+        </div>
+      )}
 
       {loading ? (
         <div className="table-loading-state">
@@ -124,13 +142,15 @@ export default function ServicesView() {
             <div key={srv.service_id} className="service-catalog-card glass-panel">
               <div className="service-card-top">
                 <span className="badge badge-progress">{srv.category || 'Standard'}</span>
-                <button 
-                  className="btn btn-ghost btn-sm"
-                  onClick={() => openEditModal(srv)}
-                  title="Edit Rate & Turnaround"
-                >
-                  <Edit2 size={14} />
-                </button>
+                {isAdmin && (
+                  <button 
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => openEditModal(srv)}
+                    title="Edit Rate & Turnaround"
+                  >
+                    <Edit2 size={14} />
+                  </button>
+                )}
               </div>
 
               <div className="service-card-main">
@@ -156,8 +176,8 @@ export default function ServicesView() {
         </div>
       )}
 
-      {/* Add / Edit Modal */}
-      {isModalOpen && (
+      {/* Add / Edit Modal (Admin only) */}
+      {isAdmin && isModalOpen && (
         <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
             <div className="modal-header">

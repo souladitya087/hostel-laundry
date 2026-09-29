@@ -7,11 +7,13 @@ import {
   Users, 
   CheckCircle, 
   AlertTriangle,
-  X
+  X,
+  Info
 } from 'lucide-react';
 import { api } from '../services/api';
 
-export default function SlotsView() {
+export default function SlotsView({ currentUser }) {
+  const isAdmin = currentUser?.role === 'admin';
   const [slots, setSlots] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -42,6 +44,7 @@ export default function SlotsView() {
 
   const handleCreateSlot = async (e) => {
     e.preventDefault();
+    if (!isAdmin) return;
     setSubmitting(true);
     setError('');
     try {
@@ -59,6 +62,7 @@ export default function SlotsView() {
   };
 
   const handleDeleteSlot = async (slotId) => {
+    if (!isAdmin) return;
     if (!window.confirm('Are you sure you want to delete this slot?')) return;
     try {
       await api.deleteSlot(slotId);
@@ -72,14 +76,27 @@ export default function SlotsView() {
     <div className="view-container">
       <div className="view-header-row">
         <div>
-          <h2>Collection & Drop-Off Slot Schedules</h2>
-          <p className="view-header-desc">Control daily operational hours, machine loads, and student intake limits</p>
+          <h2>{isAdmin ? 'Collection & Drop-Off Slot Schedules' : 'Available Collection Slot Schedules'}</h2>
+          <p className="view-header-desc">
+            {isAdmin 
+              ? 'Control daily operational hours, machine loads, and student intake limits' 
+              : 'Browse scheduled collection windows and live remaining capacity before dropping clothes'}
+          </p>
         </div>
-        <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
-          <Plus size={16} />
-          <span>Add New Slot</span>
-        </button>
+        {isAdmin && (
+          <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
+            <Plus size={16} />
+            <span>Add New Slot</span>
+          </button>
+        )}
       </div>
+
+      {!isAdmin && (
+        <div className="info-banner glass-panel">
+          <Info size={18} className="text-primary" />
+          <span>Each time slot has a strict capacity limit enforced by the DBMS to prevent counter overcrowding. Select an available slot when creating your booking.</span>
+        </div>
+      )}
 
       {loading ? (
         <div className="table-loading-state">
@@ -88,7 +105,7 @@ export default function SlotsView() {
         </div>
       ) : slots.length === 0 ? (
         <div className="empty-notice glass-panel" style={{ padding: '40px' }}>
-          No slots created yet. Click "Add New Slot" to create the first time interval.
+          No slots created yet. {isAdmin ? 'Click "Add New Slot" to create the first time interval.' : 'Please check back later for upcoming slots.'}
         </div>
       ) : (
         <div className="slots-cards-grid">
@@ -132,13 +149,15 @@ export default function SlotsView() {
 
                 <div className="slot-card-actions">
                   <span className="slot-id-label">Slot #{s.slot_id}</span>
-                  <button 
-                    className="btn btn-ghost btn-sm text-danger" 
-                    onClick={() => handleDeleteSlot(s.slot_id)}
-                    title="Delete Slot"
-                  >
-                    <Trash2 size={15} />
-                  </button>
+                  {isAdmin && (
+                    <button 
+                      className="btn btn-ghost btn-sm text-danger" 
+                      onClick={() => handleDeleteSlot(s.slot_id)}
+                      title="Delete Slot"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  )}
                 </div>
               </div>
             );
@@ -146,8 +165,8 @@ export default function SlotsView() {
         </div>
       )}
 
-      {/* Add Slot Modal */}
-      {isModalOpen && (
+      {/* Add Slot Modal (Admin only) */}
+      {isAdmin && isModalOpen && (
         <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
