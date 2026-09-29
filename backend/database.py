@@ -85,6 +85,28 @@ def get_db():
             _active_engine = "SQLite 3 (Fallback)"
             return get_sqlite_connection(), "sqlite"
 
+from decimal import Decimal
+from datetime import timedelta
+
+def serialize_db_val(val):
+    if isinstance(val, timedelta):
+        total_seconds = int(val.total_seconds())
+        hours = total_seconds // 3600
+        minutes = (total_seconds % 3600) // 60
+        return f"{hours:02d}:{minutes:02d}"
+    elif isinstance(val, (date, datetime)):
+        return str(val)
+    elif isinstance(val, Decimal):
+        return float(val)
+    return val
+
+def format_row(row):
+    if not row:
+        return row
+    if isinstance(row, dict):
+        return {k: serialize_db_val(v) for k, v in row.items()}
+    return row
+
 def execute_query(sql: str, params: tuple = (), fetch: str = "all") -> Any:
     conn, engine = get_db()
     try:
@@ -94,9 +116,11 @@ def execute_query(sql: str, params: tuple = (), fetch: str = "all") -> Any:
                 formatted_sql = sql.replace("?", "%s")
                 cur.execute(formatted_sql, params)
                 if fetch == "all":
-                    return cur.fetchall()
+                    rows = cur.fetchall()
+                    return [format_row(r) for r in rows]
                 elif fetch == "one":
-                    return cur.fetchone()
+                    row = cur.fetchone()
+                    return format_row(row)
                 elif fetch == "lastrowid":
                     return cur.lastrowid
                 return cur.rowcount
@@ -105,10 +129,10 @@ def execute_query(sql: str, params: tuple = (), fetch: str = "all") -> Any:
             cur.execute(sql, params)
             if fetch == "all":
                 rows = cur.fetchall()
-                return [dict(ix) for ix in rows]
+                return [format_row(dict(ix)) for ix in rows]
             elif fetch == "one":
                 row = cur.fetchone()
-                return dict(row) if row else None
+                return format_row(dict(row)) if row else None
             elif fetch == "lastrowid":
                 conn.commit()
                 return cur.lastrowid
@@ -120,6 +144,18 @@ def execute_query(sql: str, params: tuple = (), fetch: str = "all") -> Any:
 def generate_pickup_code() -> str:
     chars = "".join(random.choices(string.digits, k=4))
     return f"LND-{chars}"
+
+def clean_sql_file(file_path: str) -> List[str]:
+    with open(file_path, "r", encoding="utf-8") as f:
+        content = f.read()
+    lines = []
+    for line in content.splitlines():
+        trimmed = line.strip()
+        if trimmed.startswith("--"):
+            continue
+        lines.append(line)
+    clean_text = "\n".join(lines)
+    return [s.strip() for s in clean_text.split(";") if s.strip()]
 
 def init_db(force_reseed: bool = False):
     """
@@ -138,25 +174,16 @@ def init_db(force_reseed: bool = False):
                     return {"engine": "MySQL 8.0", "status": "already_initialized"}
 
                 # Run schema
-                with open(os.path.join(sql_dir, "01_schema.sql"), "r", encoding="utf-8") as f:
-                    statements = f.read().split(";")
-                    for stmt in statements:
-                        if stmt.strip() and not stmt.strip().startswith("--"):
-                            cur.execute(stmt)
+                for stmt in clean_sql_file(os.path.join(sql_dir, "01_schema.sql")):
+                    cur.execute(stmt)
 
                 # Run views
-                with open(os.path.join(sql_dir, "02_views.sql"), "r", encoding="utf-8") as f:
-                    statements = f.read().split(";")
-                    for stmt in statements:
-                        if stmt.strip() and not stmt.strip().startswith("--"):
-                            cur.execute(stmt)
+                for stmt in clean_sql_file(os.path.join(sql_dir, "02_views.sql")):
+                    cur.execute(stmt)
 
                 # Run seed data
-                with open(os.path.join(sql_dir, "04_seed_data.sql"), "r", encoding="utf-8") as f:
-                    statements = f.read().split(";")
-                    for stmt in statements:
-                        if stmt.strip() and not stmt.strip().startswith("--"):
-                            cur.execute(stmt)
+                for stmt in clean_sql_file(os.path.join(sql_dir, "04_seed_data.sql")):
+                    cur.execute(stmt)
                 
             return {"engine": "MySQL 8.0", "status": "initialized_successfully"}
         else:
