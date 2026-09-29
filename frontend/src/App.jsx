@@ -1,122 +1,129 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import React, { useState } from 'react';
+import Navbar from './components/Navbar';
+import Sidebar from './components/Sidebar';
+import NewBookingModal from './components/NewBookingModal';
+import ReceiptModal from './components/ReceiptModal';
 
-function App() {
-  const [count, setCount] = useState(0)
+import DashboardView from './views/DashboardView';
+import BookingsView from './views/BookingsView';
+import SlotsView from './views/SlotsView';
+import StudentsView from './views/StudentsView';
+import ServicesView from './views/ServicesView';
+import ReportsView from './views/ReportsView';
+import DbmsSpecView from './views/DbmsSpecView';
+
+import { api } from './services/api';
+import './App.css';
+
+export default function App() {
+  const [role, setRole] = useState('admin'); // 'admin' or 'student'
+  const [currentTab, setCurrentTab] = useState('dashboard');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isNewBookingOpen, setIsNewBookingOpen] = useState(false);
+  const [receiptBooking, setReceiptBooking] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const handleOpenReceipt = async (bookingId) => {
+    try {
+      const data = await api.getBooking(bookingId);
+      setReceiptBooking(data);
+    } catch (err) {
+      alert(`Could not load receipt: ${err.message}`);
+    }
+  };
+
+  const handleBookingCreated = () => {
+    setRefreshKey(prev => prev + 1);
+  };
+
+  const handleRefreshData = () => {
+    setRefreshKey(prev => prev + 1);
+  };
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <div className="app-layout">
+      {/* Top Navigation */}
+      <Navbar 
+        role={role}
+        setRole={setRole}
+        onOpenNewBooking={() => setIsNewBookingOpen(true)}
+        onToggleMobileMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        onRefreshData={handleRefreshData}
+      />
 
-      <div className="ticks"></div>
+      <div className="app-body">
+        {/* Sidebar & Mobile Drawer */}
+        <Sidebar 
+          currentTab={currentTab}
+          setCurrentTab={setCurrentTab}
+          isMobileOpen={isMobileMenuOpen}
+          setIsMobileOpen={setIsMobileMenuOpen}
+          role={role}
+        />
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+        {/* Main Content Area */}
+        <main className="main-content">
+          {currentTab === 'dashboard' && (
+            <DashboardView 
+              key={`dash-${refreshKey}`}
+              onOpenNewBooking={() => setIsNewBookingOpen(true)}
+              onViewReceipt={handleOpenReceipt}
+              onNavigateTab={(tab) => setCurrentTab(tab)}
+            />
+          )}
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+          {currentTab === 'bookings' && (
+            <BookingsView 
+              key={`book-${refreshKey}`}
+              onOpenNewBooking={() => setIsNewBookingOpen(true)}
+              onViewReceipt={handleOpenReceipt}
+            />
+          )}
+
+          {currentTab === 'slots' && (
+            <SlotsView 
+              key={`slot-${refreshKey}`}
+            />
+          )}
+
+          {currentTab === 'students' && (
+            <StudentsView 
+              key={`stud-${refreshKey}`}
+            />
+          )}
+
+          {currentTab === 'services' && (
+            <ServicesView 
+              key={`serv-${refreshKey}`}
+            />
+          )}
+
+          {currentTab === 'reports' && (
+            <ReportsView 
+              key={`rep-${refreshKey}`}
+            />
+          )}
+
+          {currentTab === 'dbms' && (
+            <DbmsSpecView />
+          )}
+        </main>
+      </div>
+
+      {/* Booking Wizard Modal */}
+      <NewBookingModal 
+        isOpen={isNewBookingOpen}
+        onClose={() => setIsNewBookingOpen(false)}
+        onBookingCreated={handleBookingCreated}
+      />
+
+      {/* Official Receipt Printable Modal */}
+      {receiptBooking && (
+        <ReceiptModal 
+          booking={receiptBooking}
+          onClose={() => setReceiptBooking(null)}
+        />
+      )}
+    </div>
+  );
 }
-
-export default App
