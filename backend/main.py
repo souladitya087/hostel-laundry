@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from backend.config import settings
 from backend.database import init_db, test_database_connection
-from backend.routers import students, services, slots, bookings, payments, reports, db_admin
+from backend.routers import students, services, slots, bookings, payments, reports, db_admin, auth
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -28,6 +28,7 @@ app.add_middleware(
 )
 
 # Register modular routers under API prefix
+app.include_router(auth.router, prefix=settings.API_PREFIX)
 app.include_router(students.router, prefix=settings.API_PREFIX)
 app.include_router(services.router, prefix=settings.API_PREFIX)
 app.include_router(slots.router, prefix=settings.API_PREFIX)
