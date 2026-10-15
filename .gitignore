@@ -45,6 +45,7 @@ dist/
 frontend/dist/
 frontend/dist-ssr/
 *.local
+*.zip
 
 # Logs
 logs

@@ -23,10 +23,9 @@
   * **Deterministic Stored Functions**: Real-time remaining slot capacity calculation (`fn_slot_available_capacity`).
   * **Automated Recalculation Triggers**: Real-time booking total recalculation upon line item insertion, modification, or removal (`trg_after_booking_items_insert / update / delete`).
   * **Analytical Summary Views**: Multi-table joined reporting views for booking summaries, slot occupancy, service revenue, and daily financial ledgers.
-* **Companion Documentation & Submission Deliverables**:
+* **Companion Documentation & Academic Report**:
   * 📄 **Academic Report (DOCX)**: [G01_HostelLaundryManagement_Report.docx](docs/G01_HostelLaundryManagement_Report.docx)
   * 📑 **Academic Report (PDF)**: [G01_HostelLaundryManagement_Report.pdf](docs/G01_HostelLaundryManagement_Report.pdf)
-  * 📦 **Coursework Submission ZIP**: `G01_HostelLaundryManagement_Submission.zip`
   * [Entity-Relationship (ER) Diagram & Cardinality](docs/ER_DIAGRAM.md)
   * [Step-by-Step 1NF to 3NF Normalization Proof](docs/NORMALIZATION_3NF.md)
   * [Mobile API Integration Guide](docs/MOBILE_APP_INTEGRATION.md)
@@ -298,6 +297,9 @@ hostel_laundry/
 │   ├── index.html                     # HTML5 entry
 │   └── package.json                   # Vite & React dependencies
 ├── docs/
+│   ├── G01_HostelLaundryManagement_Report.docx # Academic Project Report (Word)
+│   ├── G01_HostelLaundryManagement_Report.pdf  # Academic Project Report (PDF)
+│   ├── images/                        # High-resolution screenshots & ER diagrams
 │   ├── ER_DIAGRAM.md                  # Entity-Relationship diagram & cardinality
 │   ├── NORMALIZATION_3NF.md           # Step-by-Step 1NF to 3NF proof
 │   └── MOBILE_APP_INTEGRATION.md      # Mobile API integration notes
