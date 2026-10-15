@@ -62,16 +62,16 @@ export default function ReceiptModal({ booking, onClose }) {
               <span className="grid-val">{booking.student_name || 'N/A'}</span>
             </div>
             <div className="receipt-grid-item">
+              <span className="grid-label">COLLEGE EMAIL</span>
+              <span className="grid-val">{booking.student_email || 'N/A'}</span>
+            </div>
+            <div className="receipt-grid-item">
               <span className="grid-label">REGISTER NUMBER</span>
               <span className="grid-val">{booking.register_no || 'N/A'}</span>
             </div>
             <div className="receipt-grid-item">
               <span className="grid-label">HOSTEL ROOM</span>
               <span className="grid-val">{booking.room_no || 'N/A'}</span>
-            </div>
-            <div className="receipt-grid-item">
-              <span className="grid-label">PHONE</span>
-              <span className="grid-val">{booking.student_phone || 'N/A'}</span>
             </div>
             <div className="receipt-grid-item">
               <span className="grid-label">SLOT DATE</span>
@@ -97,19 +97,25 @@ export default function ReceiptModal({ booking, onClose }) {
               </thead>
               <tbody>
                 {booking.items && booking.items.length > 0 ? (
-                  booking.items.map((item, idx) => (
-                    <tr key={idx}>
-                      <td>
-                        <strong>{item.service_name}</strong>
-                        {item.turnaround_days !== undefined && (
-                          <span className="item-turnaround"> ({item.turnaround_days}d ready)</span>
-                        )}
-                      </td>
-                      <td style={{ textAlign: 'center' }}>{item.quantity}</td>
-                      <td style={{ textAlign: 'right' }}>₹{Number(item.unit_price).toFixed(2)}</td>
-                      <td style={{ textAlign: 'right' }}>₹{Number(item.line_total).toFixed(2)}</td>
-                    </tr>
-                  ))
+                  booking.items.map((item, idx) => {
+                    const unit = item.unit_type || 'pair';
+                    const unitLabel = unit === 'piece' ? (item.quantity === 1 ? 'piece' : 'pieces') : (item.quantity === 1 ? 'pair' : 'pairs');
+                    return (
+                      <tr key={idx}>
+                        <td>
+                          <strong>{item.service_name}</strong>
+                          {item.turnaround_days !== undefined && (
+                            <span className="item-turnaround"> ({item.turnaround_days}d ready)</span>
+                          )}
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <strong>{item.quantity}</strong> <span style={{ fontSize: '0.8rem', color: '#64748b' }}>{unitLabel}</span>
+                        </td>
+                        <td style={{ textAlign: 'right' }}>₹{Number(item.unit_price).toFixed(2)}</td>
+                        <td style={{ textAlign: 'right' }}><strong>₹{Number(item.line_total).toFixed(2)}</strong></td>
+                      </tr>
+                    );
+                  })
                 ) : (
                   <tr>
                     <td colSpan={4} style={{ textAlign: 'center', padding: '10px' }}>

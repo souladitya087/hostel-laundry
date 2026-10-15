@@ -36,6 +36,7 @@ def get_bookings(
             b.booking_id,
             b.pickup_code,
             b.booking_date,
+            b.status,
             b.status as booking_status,
             b.total_amount,
             b.notes,
@@ -43,6 +44,7 @@ def get_bookings(
             s.name as student_name,
             s.register_no,
             s.phone as student_phone,
+            s.email as student_email,
             s.room_no,
             sl.slot_id,
             sl.slot_date,
@@ -50,9 +52,9 @@ def get_bookings(
             sl.end_time,
             COUNT(bi.item_id) as total_items,
             COALESCE(SUM(bi.quantity), 0) as total_clothes,
-            COALESCE(p.payment_status, 'Unpaid') as payment_status,
-            p.payment_method,
-            p.paid_amount
+            COALESCE(MAX(p.payment_status), 'Unpaid') as payment_status,
+            MAX(p.payment_method) as payment_method,
+            COALESCE(MAX(p.paid_amount), 0.0) as paid_amount
         FROM bookings b
         JOIN students s ON b.student_id = s.student_id
         JOIN slots sl ON b.slot_id = sl.slot_id
@@ -60,27 +62,58 @@ def get_bookings(
         LEFT JOIN payments p ON b.booking_id = p.booking_id
         WHERE 1=1
     """
-    params = []
+    # Normalize query params whether called via FastAPI or directly in tests
+    status_val = status if isinstance(status, str) and status.strip() else None
+    student_id_val = student_id if isinstance(student_id, int) else None
+    q_val = q if isinstance(q, str) and q.strip() else None
+    date_val = date if isinstance(date, str) and date.strip() else None
 
-    if status:
+    params = []
+    if status_val:
         sql += " AND b.status = ?"
-        params.append(status)
-    if student_id:
+        params.append(status_val)
+    if student_id_val:
         sql += " AND b.student_id = ?"
-        params.append(student_id)
-    if date:
+        params.append(student_id_val)
+    if date_val:
         sql += " AND sl.slot_date = ?"
-        params.append(date)
-    if q:
+        params.append(date_val)
+    if q_val:
         sql += " AND (s.name LIKE ? OR s.register_no LIKE ? OR b.pickup_code LIKE ?)"
-        term = f"%{q}%"
+        term = f"%{q_val}%"
         params.extend([term, term, term])
 
     sql += """
         GROUP BY b.booking_id
         ORDER BY b.booking_id DESC;
     """
-    return execute_query(sql, tuple(params))
+    bookings = execute_query(sql, tuple(params))
+    if bookings:
+        booking_ids = [b["booking_id"] for b in bookings]
+        placeholders = ",".join(["?"] * len(booking_ids))
+        items_sql = f"""
+            SELECT 
+                bi.item_id,
+                bi.booking_id,
+                bi.service_id,
+                srv.service_name,
+                srv.turnaround_days,
+                srv.unit_type,
+                bi.quantity,
+                bi.unit_price,
+                bi.line_total
+            FROM booking_items bi
+            JOIN services srv ON bi.service_id = srv.service_id
+            WHERE bi.booking_id IN ({placeholders})
+            ORDER BY bi.item_id ASC;
+        """
+        all_items = execute_query(items_sql, tuple(booking_ids))
+        items_map = {}
+        for it in (all_items or []):
+            items_map.setdefault(it["booking_id"], []).append(it)
+        for b in bookings:
+            b["items"] = items_map.get(b["booking_id"], [])
+    return bookings or []
 
 @router.get("/{booking_id}")
 def get_booking(booking_id: int):
@@ -90,6 +123,7 @@ def get_booking(booking_id: int):
             b.booking_id,
             b.pickup_code,
             b.booking_date,
+            b.status,
             b.status as booking_status,
             b.total_amount,
             b.notes,
@@ -119,6 +153,7 @@ def get_booking(booking_id: int):
             bi.service_id,
             srv.service_name,
             srv.turnaround_days,
+            srv.unit_type,
             bi.quantity,
             bi.unit_price,
             bi.line_total

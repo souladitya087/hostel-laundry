@@ -1,18 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Search, 
-  Filter, 
-  Calendar, 
-  Clock, 
-  User, 
   FileText, 
-  Plus, 
-  CheckCircle2, 
-  XCircle, 
-  AlertCircle,
-  QrCode,
-  GraduationCap,
-  ShieldCheck
+  Plus
 } from 'lucide-react';
 import { api } from '../services/api';
 
@@ -158,7 +148,7 @@ export default function BookingsView({ currentUser, onOpenNewBooking, onViewRece
                 <th>Pickup Token</th>
                 <th>Student Details</th>
                 <th>Slot Reserved</th>
-                <th style={{ textAlign: 'center' }}>Garments</th>
+                <th>Laundry Items (by Pair / Pieces)</th>
                 <th>Total Bill</th>
                 <th>Payment</th>
                 <th>Order Status</th>
@@ -177,7 +167,7 @@ export default function BookingsView({ currentUser, onOpenNewBooking, onViewRece
                   <td>
                     <div className="student-cell">
                       <strong>{b.student_name}</strong>
-                      <span className="subtext">{b.register_no} • Room {b.room_no}</span>
+                      <span className="subtext">{b.student_email ? `${b.student_email} • ` : ''}{b.register_no} • Room {b.room_no}</span>
                     </div>
                   </td>
                   <td>
@@ -186,10 +176,21 @@ export default function BookingsView({ currentUser, onOpenNewBooking, onViewRece
                       <span className="subtext">{b.start_time} - {b.end_time}</span>
                     </div>
                   </td>
-                  <td style={{ textAlign: 'center' }}>
-                    <span className="clothes-count-badge">
-                      {b.total_clothes} {b.total_clothes === 1 ? 'item' : 'items'}
-                    </span>
+                  <td>
+                    <div className="booking-items-summary">
+                      <span className="clothes-count-badge" style={{ alignSelf: 'flex-start' }}>
+                        {b.total_clothes} {b.total_clothes === 1 ? 'item' : 'items'}
+                      </span>
+                      {b.items && b.items.length > 0 && (
+                        <div className="items-tags-list">
+                          {b.items.map((it, idx) => (
+                            <span key={idx} className="item-tag-chip">
+                              <strong>{it.quantity} {it.unit_type === 'piece' ? (it.quantity > 1 ? 'pcs' : 'pc') : (it.quantity > 1 ? 'pairs' : 'pair')}</strong>&nbsp;{it.service_name.replace(/\s*\([^)]*\)/, '')}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </td>
                   <td>
                     <strong className="price-text">₹{Number(b.total_amount).toFixed(2)}</strong>
@@ -204,7 +205,7 @@ export default function BookingsView({ currentUser, onOpenNewBooking, onViewRece
                       /* Admin Editable Dropdown */
                       <select
                         className="status-select-input"
-                        value={b.booking_status}
+                        value={b.booking_status || b.status}
                         disabled={updatingId === b.booking_id}
                         onChange={e => handleStatusChange(b.booking_id, e.target.value)}
                       >
@@ -216,7 +217,7 @@ export default function BookingsView({ currentUser, onOpenNewBooking, onViewRece
                       </select>
                     ) : (
                       /* Student Read-Only Badge */
-                      getStatusBadge(b.booking_status)
+                      getStatusBadge(b.booking_status || b.status)
                     )}
                   </td>
                   <td style={{ textAlign: 'right' }}>

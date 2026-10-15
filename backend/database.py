@@ -171,6 +171,16 @@ def init_db(force_reseed: bool = False):
                 cur.execute("SHOW TABLES LIKE 'students';")
                 exists = cur.fetchone()
                 if exists and not force_reseed:
+                    # Ensure new columns exist for existing databases
+                    try:
+                        cur.execute("SHOW COLUMNS FROM students LIKE 'password';")
+                        if not cur.fetchone():
+                            cur.execute("ALTER TABLE students ADD COLUMN password VARCHAR(255) NOT NULL DEFAULT 'student123';")
+                        cur.execute("SHOW COLUMNS FROM services LIKE 'unit_type';")
+                        if not cur.fetchone():
+                            cur.execute("ALTER TABLE services ADD COLUMN unit_type VARCHAR(20) DEFAULT 'pair';")
+                    except Exception as col_err:
+                        print("Schema migration note (MySQL):", col_err)
                     return {"engine": "MySQL 8.0", "status": "already_initialized"}
 
                 # Run schema
@@ -180,6 +190,26 @@ def init_db(force_reseed: bool = False):
                 # Run views
                 for stmt in clean_sql_file(os.path.join(sql_dir, "02_views.sql")):
                     cur.execute(stmt)
+
+                # Run stored procedures, function, and triggers
+                proc_file = os.path.join(sql_dir, "03_procedures_triggers.sql")
+                if os.path.exists(proc_file):
+                    with open(proc_file, "r", encoding="utf-8") as pf:
+                        proc_content = pf.read()
+                    sep = "$$"
+                    for block in proc_content.split(sep):
+                        lines = []
+                        for line in block.splitlines():
+                            trimmed = line.strip()
+                            if trimmed.startswith("--") or trimmed.upper().startswith("DELIMITER") or trimmed.upper().startswith("USE "):
+                                continue
+                            lines.append(line)
+                        stmt = "\n".join(lines).strip()
+                        if stmt:
+                            try:
+                                cur.execute(stmt)
+                            except Exception as proc_err:
+                                print("Procedure/Trigger execution note:", proc_err)
 
                 # Run seed data
                 for stmt in clean_sql_file(os.path.join(sql_dir, "04_seed_data.sql")):
@@ -192,6 +222,17 @@ def init_db(force_reseed: bool = False):
             cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='students';")
             exists = cur.fetchone()
             if exists and not force_reseed:
+                # Ensure new columns exist for existing SQLite databases
+                try:
+                    cols = [r[1] for r in cur.execute("PRAGMA table_info(students);").fetchall()]
+                    if "password" not in cols:
+                        cur.execute("ALTER TABLE students ADD COLUMN password TEXT NOT NULL DEFAULT 'student123';")
+                    cols_srv = [r[1] for r in cur.execute("PRAGMA table_info(services);").fetchall()]
+                    if "unit_type" not in cols_srv:
+                        cur.execute("ALTER TABLE services ADD COLUMN unit_type TEXT DEFAULT 'pair';")
+                    conn.commit()
+                except Exception as col_err:
+                    print("Schema migration note (SQLite):", col_err)
                 return {"engine": "SQLite 3", "status": "already_initialized"}
 
             cur.executescript("""
@@ -207,7 +248,8 @@ def init_db(force_reseed: bool = False):
                     name TEXT NOT NULL,
                     register_no TEXT NOT NULL UNIQUE,
                     phone TEXT NOT NULL,
-                    email TEXT NOT NULL,
+                    email TEXT NOT NULL UNIQUE,
+                    password TEXT NOT NULL DEFAULT 'student123',
                     room_no TEXT NOT NULL,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
                 );
@@ -219,6 +261,7 @@ def init_db(force_reseed: bool = False):
                     turnaround_days INTEGER NOT NULL DEFAULT 1 CHECK (turnaround_days >= 0),
                     description TEXT,
                     category TEXT DEFAULT 'General',
+                    unit_type TEXT DEFAULT 'pair',
                     is_active INTEGER DEFAULT 1
                 );
 
@@ -349,27 +392,31 @@ def init_db(force_reseed: bool = False):
                 GROUP BY sl.slot_id;
 
                 -- Seed Data
-                INSERT INTO students (name, register_no, phone, email, room_no) VALUES
-                ('Aditya Sharma', '2024CS01', '+91 98765 43210', 'aditya.cs24@campus.edu', 'BH-204'),
-                ('Priya Patel', '2024IT15', '+91 98765 43211', 'priya.it24@campus.edu', 'GH-102'),
-                ('Rohan Verma', '2023ME42', '+91 98765 43212', 'rohan.me23@campus.edu', 'BH-315'),
-                ('Sneha Kulkarni', '2024EC08', '+91 98765 43213', 'sneha.ec24@campus.edu', 'GH-208'),
-                ('Aman Gupta', '2023CS88', '+91 98765 43214', 'aman.cs23@campus.edu', 'BH-112'),
-                ('Ananya Iyer', '2024DS19', '+91 98765 43215', 'ananya.ds24@campus.edu', 'GH-304'),
-                ('Karthik Nair', '2023EE31', '+91 98765 43216', 'karthik.ee23@campus.edu', 'BH-401'),
-                ('Meera Joshi', '2024AI05', '+91 98765 43217', 'meera.ai24@campus.edu', 'GH-115'),
-                ('Varun Reddy', '2023CE22', '+91 98765 43218', 'varun.ce23@campus.edu', 'BH-220'),
-                ('Tanvi Deshmukh', '2024IT77', '+91 98765 43219', 'tanvi.it24@campus.edu', 'GH-219'),
-                ('Siddharth Rao', '2023CS50', '+91 98765 43220', 'sid.cs23@campus.edu', 'BH-105'),
-                ('Pooja Mehta', '2024EC33', '+91 98765 43221', 'pooja.ec24@campus.edu', 'GH-312');
+                INSERT INTO students (name, register_no, phone, email, password, room_no) VALUES
+                ('Aditya Sharma', '2024CS01', '+91 98765 43210', 'aditya.cs24@campus.edu', 'student123', 'BH-204'),
+                ('Priya Patel', '2024IT15', '+91 98765 43211', 'priya.it24@campus.edu', 'student123', 'GH-102'),
+                ('Rohan Verma', '2023ME42', '+91 98765 43212', 'rohan.me23@campus.edu', 'student123', 'BH-315'),
+                ('Sneha Kulkarni', '2024EC08', '+91 98765 43213', 'sneha.ec24@campus.edu', 'student123', 'GH-208'),
+                ('Aman Gupta', '2023CS88', '+91 98765 43214', 'aman.cs23@campus.edu', 'student123', 'BH-112'),
+                ('Ananya Iyer', '2024DS19', '+91 98765 43215', 'ananya.ds24@campus.edu', 'student123', 'GH-304'),
+                ('Karthik Nair', '2023EE31', '+91 98765 43216', 'karthik.ee23@campus.edu', 'student123', 'BH-401'),
+                ('Meera Joshi', '2024AI05', '+91 98765 43217', 'meera.ai24@campus.edu', 'student123', 'GH-115'),
+                ('Varun Reddy', '2023CE22', '+91 98765 43218', 'varun.ce23@campus.edu', 'student123', 'BH-220'),
+                ('Tanvi Deshmukh', '2024IT77', '+91 98765 43219', 'tanvi.it24@campus.edu', 'student123', 'GH-219'),
+                ('Siddharth Rao', '2023CS50', '+91 98765 43220', 'sid.cs23@campus.edu', 'student123', 'BH-105'),
+                ('Pooja Mehta', '2024EC33', '+91 98765 43221', 'pooja.ec24@campus.edu', 'student123', 'GH-312');
 
-                INSERT INTO services (service_name, unit_price, turnaround_days, description, category, is_active) VALUES
-                ('Wash & Fold', 30.00, 1, 'Standard machine washing, tumble drying, and neat folding', 'Everyday', 1),
-                ('Wash & Steam Iron', 50.00, 2, 'Deep fabric wash followed by crisp vertical steam pressing', 'Everyday', 1),
-                ('Express Same-Day Wash', 80.00, 0, 'Priority rush service washed, dried, and folded within 6 hours', 'Express', 1),
-                ('Dry Cleaning (Suits / Blazers)', 180.00, 3, 'Professional chemical dry cleaning for blazers, coats, and formalwear', 'Specialty', 1),
-                ('Heavy Bedding & Blankets', 120.00, 2, 'Large capacity thermal drum wash for comforters, quilts, and bedspreads', 'Heavy', 1),
-                ('Sneakers & Shoe Spa', 150.00, 2, 'Deep dirt extraction, midsole brightening, and odor disinfection', 'Footwear', 1);
+                INSERT INTO services (service_name, unit_price, turnaround_days, description, category, unit_type, is_active) VALUES
+                ('Wash & Fold (Pair)', 30.00, 1, 'Standard machine washing, tumble drying, and neat folding', 'Everyday', 'pair', 1),
+                ('Wash & Steam Iron (Pair)', 50.00, 2, 'Deep fabric wash followed by crisp vertical steam pressing', 'Everyday', 'pair', 1),
+                ('Express Same-Day Wash (Pair)', 80.00, 0, 'Priority rush service washed, dried, and folded within 6 hours', 'Express', 'pair', 1),
+                ('Dry Cleaning (Suits / Blazers)', 180.00, 3, 'Professional chemical dry cleaning for blazers, coats, and formalwear', 'Specialty', 'pair', 1),
+                ('Heavy Bedding & Blankets', 120.00, 2, 'Large capacity thermal drum wash for comforters, quilts, and bedspreads', 'Heavy', 'piece', 1),
+                ('Sneakers & Shoe Spa (Pair)', 150.00, 2, 'Deep dirt extraction, midsole brightening, and odor disinfection', 'Footwear', 'pair', 1),
+                ('Steam Ironing Only (Pair)', 25.00, 1, 'Quick wrinkle removal and steam finish for trousers & shirts', 'Everyday', 'pair', 1),
+                ('Curtains & Drapes Care', 140.00, 3, 'Dust and allergen extraction for hostel room curtains', 'Heavy', 'piece', 1),
+                ('Traditional Ethnic Wear (Pair)', 130.00, 2, 'Delicate wash and precision fold for festive attire', 'Specialty', 'pair', 1),
+                ('Bedsheets & Pillow Covers (Pair)', 60.00, 1, 'Sanitizing cycle with soft fabric conditioner', 'Everyday', 'pair', 1);
 
                 INSERT INTO slots (slot_date, start_time, end_time, capacity, status) VALUES
                 (date('now'), '08:00', '10:00', 8, 'Available'),
@@ -389,7 +436,14 @@ def init_db(force_reseed: bool = False):
                 (2, 2, datetime('now', '-1 hours'), 'Ready for Pickup', 180.00, 'LND-2402', 'Hostel formal event blazer'),
                 (3, 1, datetime('now'), 'Pending', 90.00, 'LND-2403', 'Standard wash'),
                 (4, 3, datetime('now'), 'Completed', 150.00, 'LND-2404', 'Sports shoes cleaning'),
-                (5, 4, datetime('now'), 'Pending', 240.00, 'LND-2405', 'Two heavy winter blankets');
+                (5, 4, datetime('now'), 'Pending', 240.00, 'LND-2405', 'Two heavy winter blankets'),
+                (6, 2, datetime('now'), 'In Progress', 100.00, 'LND-2406', 'Two pairs wash and steam iron'),
+                (7, 5, datetime('now'), 'Completed', 180.00, 'LND-2407', 'Blazer dry clean'),
+                (8, 6, datetime('now'), 'Ready for Pickup', 80.00, 'LND-2408', 'Express same-day wash'),
+                (9, 7, datetime('now'), 'Pending', 50.00, 'LND-2409', 'Wash & steam iron'),
+                (10, 8, datetime('now'), 'Completed', 210.00, 'LND-2410', 'Suits and shoes'),
+                (11, 9, datetime('now'), 'In Progress', 150.00, 'LND-2411', 'Sneakers care'),
+                (12, 10, datetime('now'), 'Cancelled', 60.00, 'LND-2412', 'Cancelled by resident');
 
                 INSERT INTO booking_items (booking_id, service_id, quantity, unit_price, line_total) VALUES
                 (1, 1, 3, 30.00, 90.00),
@@ -397,13 +451,27 @@ def init_db(force_reseed: bool = False):
                 (2, 4, 1, 180.00, 180.00),
                 (3, 1, 3, 30.00, 90.00),
                 (4, 6, 1, 150.00, 150.00),
-                (5, 5, 2, 120.00, 240.00);
+                (5, 5, 2, 120.00, 240.00),
+                (6, 2, 2, 50.00, 100.00),
+                (7, 4, 1, 180.00, 180.00),
+                (8, 3, 1, 80.00, 80.00),
+                (9, 2, 1, 50.00, 50.00),
+                (10, 1, 2, 30.00, 60.00),
+                (10, 6, 1, 150.00, 150.00),
+                (11, 6, 1, 150.00, 150.00),
+                (12, 10, 1, 60.00, 60.00);
 
                 INSERT INTO payments (booking_id, paid_amount, payment_method, payment_status, transaction_ref) VALUES
                 (1, 210.00, 'UPI', 'Paid', 'UPI/2026/99812'),
                 (2, 180.00, 'Student ID Card', 'Paid', 'CARD-88123'),
                 (4, 150.00, 'UPI', 'Paid', 'UPI/2026/77412'),
-                (5, 240.00, 'Cash', 'Paid', 'CASH-REC-045');
+                (5, 240.00, 'Cash', 'Paid', 'CASH-REC-045'),
+                (6, 100.00, 'UPI', 'Paid', 'UPI/2026/33101'),
+                (7, 180.00, 'Student ID Card', 'Paid', 'CARD-88190'),
+                (8, 80.00, 'UPI', 'Paid', 'UPI/2026/44512'),
+                (9, 50.00, 'Cash', 'Paid', 'CASH-REC-049'),
+                (10, 210.00, 'UPI', 'Paid', 'UPI/2026/55678'),
+                (11, 150.00, 'Student ID Card', 'Paid', 'CARD-99021');
             """)
             conn.commit()
             return {"engine": "SQLite 3", "status": "initialized_successfully"}

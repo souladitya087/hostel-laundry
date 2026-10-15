@@ -22,8 +22,8 @@ export default function DbmsSpecView() {
   };
 
   const tables = [
-    { name: 'students', pk: 'student_id', purpose: 'Hostel student profiles & registration identifiers', cols: 'student_id (PK), name, register_no (UQ), phone, email, room_no, created_at' },
-    { name: 'services', pk: 'service_id', purpose: 'Laundry service catalog, rates, and turnaround timeframe', cols: 'service_id (PK), service_name (UQ), unit_price, turnaround_days, description, category, is_active' },
+    { name: 'students', pk: 'student_id', purpose: 'Hostel student profiles, college email auth & registration identifiers', cols: 'student_id (PK), name, register_no (UQ), phone, email (UQ), password, room_no, created_at' },
+    { name: 'services', pk: 'service_id', purpose: 'Laundry service catalog, rates, pair/piece units, and turnaround timeframe', cols: 'service_id (PK), service_name (UQ), unit_price, turnaround_days, description, category, unit_type, is_active' },
     { name: 'slots', pk: 'slot_id', purpose: 'Collection intervals with strict capacity enforcement', cols: 'slot_id (PK), slot_date, start_time, end_time, capacity, status, created_at, UQ(date, times)' },
     { name: 'bookings', pk: 'booking_id', purpose: 'Core booking transaction with student & slot foreign keys', cols: 'booking_id (PK), student_id (FK), slot_id (FK), booking_date, status, total_amount, pickup_code (UQ), notes' },
     { name: 'booking_items', pk: 'item_id', purpose: 'Line items linking service and quantity to a booking', cols: 'item_id (PK), booking_id (FK), service_id (FK), quantity (CHK > 0), unit_price, line_total' },

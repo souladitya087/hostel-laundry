@@ -24,7 +24,8 @@ export default function ServicesView({ currentUser }) {
     unit_price: 40.0,
     turnaround_days: 1,
     description: '',
-    category: 'Everyday'
+    category: 'Everyday',
+    unit_type: 'pair'
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -53,7 +54,8 @@ export default function ServicesView({ currentUser }) {
       unit_price: 40.0,
       turnaround_days: 1,
       description: '',
-      category: 'Everyday'
+      category: 'Everyday',
+      unit_type: 'pair'
     });
     setError('');
     setIsModalOpen(true);
@@ -67,7 +69,8 @@ export default function ServicesView({ currentUser }) {
       unit_price: srv.unit_price,
       turnaround_days: srv.turnaround_days,
       description: srv.description || '',
-      category: srv.category || 'Everyday'
+      category: srv.category || 'Everyday',
+      unit_type: srv.unit_type || 'pair'
     });
     setError('');
     setIsModalOpen(true);
@@ -164,7 +167,7 @@ export default function ServicesView({ currentUser }) {
               <div className="service-card-metrics">
                 <div className="metric-box">
                   <span className="metric-label">UNIT RATE</span>
-                  <strong className="metric-val text-primary">₹{Number(srv.unit_price).toFixed(2)}</strong>
+                  <strong className="metric-val text-primary">₹{Number(srv.unit_price).toFixed(2)} / {srv.unit_type || 'pair'}</strong>
                 </div>
                 <div className="metric-box">
                   <span className="metric-label">TURNAROUND</span>
@@ -209,7 +212,7 @@ export default function ServicesView({ currentUser }) {
 
               <div className="form-row-2">
                 <div className="form-group">
-                  <label className="form-label">Unit Price (₹ / Item)</label>
+                  <label className="form-label">Unit Price (₹)</label>
                   <input 
                     type="number" 
                     step="0.5"
@@ -224,7 +227,7 @@ export default function ServicesView({ currentUser }) {
                   <label className="form-label">Turnaround Days</label>
                   <input 
                     type="number" 
-                    min="0"
+                    min="0" 
                     max="10"
                     className="form-input" 
                     value={formData.turnaround_days}
@@ -234,19 +237,33 @@ export default function ServicesView({ currentUser }) {
                 </div>
               </div>
 
-              <div className="form-group">
-                <label className="form-label">Category</label>
-                <select 
-                  className="form-select"
-                  value={formData.category}
-                  onChange={e => setFormData({ ...formData, category: e.target.value })}
-                >
-                  <option value="Everyday">Everyday Wash</option>
-                  <option value="Express">Express Same-Day</option>
-                  <option value="Specialty">Specialty Dry Cleaning</option>
-                  <option value="Heavy">Heavy Bedding & Blankets</option>
-                  <option value="Footwear">Footwear & Accessories</option>
-                </select>
+              <div className="form-row-2">
+                <div className="form-group">
+                  <label className="form-label">Category</label>
+                  <select 
+                    className="form-select"
+                    value={formData.category}
+                    onChange={e => setFormData({ ...formData, category: e.target.value })}
+                  >
+                    <option value="Everyday">Everyday Wash</option>
+                    <option value="Express">Express Same-Day</option>
+                    <option value="Specialty">Specialty Dry Cleaning</option>
+                    <option value="Heavy">Heavy Bedding & Blankets</option>
+                    <option value="Footwear">Footwear & Accessories</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Billing Unit</label>
+                  <select 
+                    className="form-select"
+                    value={formData.unit_type || 'pair'}
+                    onChange={e => setFormData({ ...formData, unit_type: e.target.value })}
+                  >
+                    <option value="pair">Pair (by pair: e.g. Shirt & Pant, Shoes)</option>
+                    <option value="piece">Piece (by piece: e.g. Blanket, Blazer)</option>
+                  </select>
+                </div>
               </div>
 
               <div className="form-group">

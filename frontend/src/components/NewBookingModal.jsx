@@ -288,16 +288,18 @@ export default function NewBookingModal({ isOpen, onClose, onBookingCreated, cur
 
             {/* Step 3: Select Laundry Items */}
             <div className="form-section">
-              <label className="form-label">3. Laundry Services & Quantities</label>
+              <label className="form-label">3. Laundry Services & Quantities (by Pair / Pieces)</label>
               <div className="services-picker-list">
                 {services.map(srv => {
                   const qty = itemQuantities[srv.service_id] || 0;
+                  const unit = srv.unit_type || 'pair';
+                  const unitLabel = unit === 'piece' ? (qty === 1 ? 'piece' : 'pieces') : (qty === 1 ? 'pair' : 'pairs');
                   return (
                     <div key={srv.service_id} className={`service-item-row ${qty > 0 ? 'active' : ''}`}>
                       <div className="srv-info">
                         <span className="srv-name">{srv.service_name}</span>
                         <span className="srv-meta">
-                          ₹{Number(srv.unit_price).toFixed(0)} / piece • {srv.turnaround_days} day turnaround
+                          ₹{Number(srv.unit_price).toFixed(0)} / {unit} • {srv.turnaround_days} day turnaround
                         </span>
                       </div>
                       <div className="quantity-controls">
@@ -309,7 +311,9 @@ export default function NewBookingModal({ isOpen, onClose, onBookingCreated, cur
                         >
                           <Minus size={14} />
                         </button>
-                        <span className="qty-number">{qty}</span>
+                        <span className="qty-number" style={{ minWidth: '60px', textAlign: 'center' }}>
+                          {qty} {qty > 0 ? (unit === 'piece' ? (qty === 1 ? 'pc' : 'pcs') : (qty === 1 ? 'pair' : 'pairs')) : ''}
+                        </span>
                         <button 
                           type="button" 
                           className="qty-btn" 

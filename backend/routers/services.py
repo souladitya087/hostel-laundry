@@ -11,6 +11,7 @@ class ServiceCreate(BaseModel):
     turnaround_days: int
     description: Optional[str] = ""
     category: Optional[str] = "General"
+    unit_type: Optional[str] = "pair"
 
 class ServiceUpdate(BaseModel):
     service_name: Optional[str] = None
@@ -18,6 +19,7 @@ class ServiceUpdate(BaseModel):
     turnaround_days: Optional[int] = None
     description: Optional[str] = None
     category: Optional[str] = None
+    unit_type: Optional[str] = None
     is_active: Optional[bool] = None
 
 @router.get("")
@@ -49,12 +51,12 @@ def create_service(data: ServiceCreate):
         raise HTTPException(status_code=400, detail="A service with this name already exists.")
 
     insert_sql = """
-        INSERT INTO services (service_name, unit_price, turnaround_days, description, category, is_active)
-        VALUES (?, ?, ?, ?, ?, 1);
+        INSERT INTO services (service_name, unit_price, turnaround_days, description, category, unit_type, is_active)
+        VALUES (?, ?, ?, ?, ?, ?, 1);
     """
     new_id = execute_query(
         insert_sql,
-        (data.service_name.strip(), data.unit_price, data.turnaround_days, data.description.strip(), data.category.strip()),
+        (data.service_name.strip(), data.unit_price, data.turnaround_days, data.description.strip(), data.category.strip(), (data.unit_type or "pair").strip()),
         fetch="lastrowid"
     )
     return {"service_id": new_id, "message": "Service created successfully"}
@@ -70,14 +72,15 @@ def update_service(service_id: int, data: ServiceUpdate):
     turnaround_days = data.turnaround_days if data.turnaround_days is not None else existing["turnaround_days"]
     description = data.description if data.description is not None else existing["description"]
     category = data.category if data.category is not None else existing["category"]
+    unit_type = data.unit_type.strip() if data.unit_type is not None else existing.get("unit_type", "pair")
     is_active = 1 if (data.is_active if data.is_active is not None else existing["is_active"]) else 0
 
     update_sql = """
         UPDATE services
-        SET service_name = ?, unit_price = ?, turnaround_days = ?, description = ?, category = ?, is_active = ?
+        SET service_name = ?, unit_price = ?, turnaround_days = ?, description = ?, category = ?, unit_type = ?, is_active = ?
         WHERE service_id = ?;
     """
-    execute_query(update_sql, (service_name, unit_price, turnaround_days, description, category, is_active, service_id), fetch="none")
+    execute_query(update_sql, (service_name, unit_price, turnaround_days, description, category, unit_type, is_active, service_id), fetch="none")
     return {"message": "Service updated successfully"}
 
 @router.delete("/{service_id}")

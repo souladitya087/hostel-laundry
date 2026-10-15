@@ -20,7 +20,8 @@ CREATE TABLE students (
     name VARCHAR(100) NOT NULL,
     register_no VARCHAR(50) NOT NULL UNIQUE,
     phone VARCHAR(20) NOT NULL,
-    email VARCHAR(100) NOT NULL,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL DEFAULT 'student123',
     room_no VARCHAR(20) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
@@ -34,6 +35,7 @@ CREATE TABLE services (
     turnaround_days INT NOT NULL DEFAULT 1 CHECK (turnaround_days >= 0),
     description VARCHAR(255),
     category VARCHAR(50) DEFAULT 'General',
+    unit_type VARCHAR(20) DEFAULT 'pair',
     is_active BOOLEAN DEFAULT TRUE
 ) ENGINE=InnoDB;
 
@@ -98,6 +100,7 @@ CREATE TABLE payments (
 
 -- Create indexes for frequent search & join optimizations
 CREATE INDEX idx_student_register ON students(register_no);
+CREATE INDEX idx_student_email ON students(email);
 CREATE INDEX idx_booking_student ON bookings(student_id);
 CREATE INDEX idx_booking_slot ON bookings(slot_id);
 CREATE INDEX idx_booking_status ON bookings(status);

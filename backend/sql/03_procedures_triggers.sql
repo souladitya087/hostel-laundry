@@ -113,6 +113,23 @@ BEGIN
 END$$
 
 -- ====================================================================
+-- STORED FUNCTION 1: fn_slot_available_capacity
+-- Returns remaining capacity for a given slot ID
+-- ====================================================================
+DROP FUNCTION IF EXISTS fn_slot_available_capacity$$
+CREATE FUNCTION fn_slot_available_capacity(p_slot_id INT)
+RETURNS INT
+DETERMINISTIC
+READS SQL DATA
+BEGIN
+    DECLARE v_cap INT DEFAULT 0;
+    DECLARE v_booked INT DEFAULT 0;
+    SELECT COALESCE(MAX(capacity), 0) INTO v_cap FROM slots WHERE slot_id = p_slot_id;
+    SELECT COUNT(*) INTO v_booked FROM bookings WHERE slot_id = p_slot_id AND status != 'Cancelled';
+    RETURN GREATEST(0, v_cap - v_booked);
+END$$
+
+-- ====================================================================
 -- TRIGGERS: Automatically recalculate bookings.total_amount
 -- whenever items are added, modified, or removed from booking_items
 -- ====================================================================

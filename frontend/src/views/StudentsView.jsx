@@ -57,6 +57,7 @@ export default function StudentsView() {
       register_no: '',
       phone: '',
       email: '',
+      password: 'student123',
       room_no: ''
     });
     setError('');
@@ -70,6 +71,7 @@ export default function StudentsView() {
       register_no: student.register_no,
       phone: student.phone,
       email: student.email,
+      password: '',
       room_no: student.room_no
     });
     setError('');
@@ -81,10 +83,14 @@ export default function StudentsView() {
     setSubmitting(true);
     setError('');
     try {
+      const payload = { ...formData };
+      if (editingStudent && !payload.password) {
+        delete payload.password;
+      }
       if (editingStudent) {
-        await api.updateStudent(editingStudent.student_id, formData);
+        await api.updateStudent(editingStudent.student_id, payload);
       } else {
-        await api.createStudent(formData);
+        await api.createStudent(payload);
       }
       setIsModalOpen(false);
       await loadStudents(searchQuery);
@@ -293,6 +299,19 @@ export default function StudentsView() {
                     required
                   />
                 </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">
+                  {editingStudent ? 'Reset Password (leave empty to retain current)' : 'Account Password'}
+                </label>
+                <input 
+                  type="password" 
+                  className="form-input" 
+                  placeholder={editingStudent ? '•••••••• (unchanged)' : 'Default: student123'}
+                  value={formData.password || ''}
+                  onChange={e => setFormData({ ...formData, password: e.target.value })}
+                />
               </div>
 
               <div className="modal-actions" style={{ marginTop: '20px' }}>

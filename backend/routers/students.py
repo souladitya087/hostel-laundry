@@ -11,17 +11,20 @@ class StudentCreate(BaseModel):
     phone: str
     email: str
     room_no: str
+    password: Optional[str] = "student123"
 
 class StudentUpdate(BaseModel):
     name: Optional[str] = None
     phone: Optional[str] = None
     email: Optional[str] = None
     room_no: Optional[str] = None
+    password: Optional[str] = None
 
 @router.get("")
 def get_students(q: Optional[str] = Query(None, description="Search by name, register_no or room")):
-    if q:
-        like_term = f"%{q}%"
+    q_val = q if isinstance(q, str) and q.strip() else None
+    if q_val:
+        like_term = f"%{q_val}%"
         sql = """
             SELECT s.*, 
                    COUNT(b.booking_id) as total_bookings
@@ -64,19 +67,28 @@ def get_student(student_id: int):
 
 @router.post("", status_code=201)
 def create_student(data: StudentCreate):
-    # Check if register_no is already taken
-    check_sql = "SELECT student_id FROM students WHERE register_no = ?;"
-    existing = execute_query(check_sql, (data.register_no.strip().upper(),), fetch="one")
+    if not data.name or not data.name.strip():
+        raise HTTPException(status_code=400, detail="Student name cannot be empty.")
+    if not data.phone or not data.phone.strip():
+        raise HTTPException(status_code=400, detail="Phone number cannot be empty.")
+    if not data.email or "@" not in data.email or "." not in data.email:
+        raise HTTPException(status_code=400, detail="A valid college email address is required.")
+    if not data.room_no or not data.room_no.strip():
+        raise HTTPException(status_code=400, detail="Hostel room number cannot be empty.")
+
+    # Check if register_no or email is already taken
+    check_sql = "SELECT student_id FROM students WHERE register_no = ? OR LOWER(email) = LOWER(?);"
+    existing = execute_query(check_sql, (data.register_no.strip().upper(), data.email.strip().lower()), fetch="one")
     if existing:
-        raise HTTPException(status_code=400, detail="Student with this Register Number already exists.")
+        raise HTTPException(status_code=400, detail="Student with this Register Number or Email already exists.")
     
     insert_sql = """
-        INSERT INTO students (name, register_no, phone, email, room_no)
-        VALUES (?, ?, ?, ?, ?);
+        INSERT INTO students (name, register_no, phone, email, password, room_no)
+        VALUES (?, ?, ?, ?, ?, ?);
     """
     new_id = execute_query(
         insert_sql, 
-        (data.name.strip(), data.register_no.strip().upper(), data.phone.strip(), data.email.strip(), data.room_no.strip()),
+        (data.name.strip(), data.register_no.strip().upper(), data.phone.strip(), data.email.strip().lower(), (data.password or "student123").strip(), data.room_no.strip()),
         fetch="lastrowid"
     )
     return {"student_id": new_id, "message": "Student created successfully"}
@@ -87,17 +99,41 @@ def update_student(student_id: int, data: StudentUpdate):
     if not existing:
         raise HTTPException(status_code=404, detail="Student not found.")
     
-    name = data.name.strip() if data.name else existing["name"]
-    phone = data.phone.strip() if data.phone else existing["phone"]
-    email = data.email.strip() if data.email else existing["email"]
-    room_no = data.room_no.strip() if data.room_no else existing["room_no"]
+    name = data.name.strip() if data.name is not None else existing["name"]
+    if not name:
+        raise HTTPException(status_code=400, detail="Student name cannot be empty.")
+
+    phone = data.phone.strip() if data.phone is not None else existing["phone"]
+    if not phone:
+        raise HTTPException(status_code=400, detail="Phone number cannot be empty.")
+
+    room_no = data.room_no.strip() if data.room_no is not None else existing["room_no"]
+    if not room_no:
+        raise HTTPException(status_code=400, detail="Room number cannot be empty.")
+
+    if data.email is not None:
+        email = data.email.strip().lower()
+        if not email or "@" not in email or "." not in email:
+            raise HTTPException(status_code=400, detail="A valid college email address is required.")
+        # Check if email is taken by another student
+        email_conflict = execute_query(
+            "SELECT student_id FROM students WHERE LOWER(email) = LOWER(?) AND student_id != ?;",
+            (email, student_id),
+            fetch="one"
+        )
+        if email_conflict:
+            raise HTTPException(status_code=400, detail=f"Student with college email '{email}' already exists.")
+    else:
+        email = existing["email"]
+
+    password = data.password.strip() if data.password else existing.get("password", "student123")
     
     update_sql = """
         UPDATE students 
-        SET name = ?, phone = ?, email = ?, room_no = ?
+        SET name = ?, phone = ?, email = ?, password = ?, room_no = ?
         WHERE student_id = ?;
     """
-    execute_query(update_sql, (name, phone, email, room_no, student_id), fetch="none")
+    execute_query(update_sql, (name, phone, email, password, room_no, student_id), fetch="none")
     return {"message": "Student profile updated successfully"}
 
 @router.delete("/{student_id}")
