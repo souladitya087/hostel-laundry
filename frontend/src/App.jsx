@@ -33,6 +33,7 @@ export default function App() {
   const [isNewBookingOpen, setIsNewBookingOpen] = useState(false);
   const [receiptBooking, setReceiptBooking] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [pendingCount, setPendingCount] = useState(0);
 
   // If role is student and current tab is admin-only, reset to dashboard
   useEffect(() => {
@@ -40,6 +41,25 @@ export default function App() {
       setCurrentTab('dashboard');
     }
   }, [currentUser, currentTab]);
+
+  // Poll pending count for admin badge
+  useEffect(() => {
+    if (currentUser?.role === 'admin') {
+      const fetchPending = async () => {
+        try {
+          const pendings = await api.getBookings({ status: 'Pending' });
+          setPendingCount(pendings ? pendings.length : 0);
+        } catch {
+          // ignore error
+        }
+      };
+      fetchPending();
+      const interval = setInterval(fetchPending, 6000);
+      return () => clearInterval(interval);
+    } else {
+      setPendingCount(0);
+    }
+  }, [currentUser, refreshKey]);
 
   const handleLoginSuccess = (user) => {
     setCurrentUser(user);
@@ -104,6 +124,7 @@ export default function App() {
           isMobileOpen={isMobileMenuOpen}
           setIsMobileOpen={setIsMobileMenuOpen}
           role={role}
+          pendingCount={pendingCount}
         />
 
         {/* Main Content Area */}

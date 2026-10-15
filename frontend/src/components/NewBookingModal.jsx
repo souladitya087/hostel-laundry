@@ -4,19 +4,14 @@ import {
   Plus, 
   Minus, 
   Calendar, 
-  Clock, 
-  User, 
-  CreditCard, 
   AlertCircle, 
   CheckCircle, 
-  Sparkles, 
   ShoppingBag,
   GraduationCap
 } from 'lucide-react';
 import { api } from '../services/api';
 
 export default function NewBookingModal({ isOpen, onClose, onBookingCreated, currentUser }) {
-  const [step, setStep] = useState(1);
   const [students, setStudents] = useState([]);
   const [slots, setSlots] = useState([]);
   const [services, setServices] = useState([]);
@@ -190,8 +185,12 @@ export default function NewBookingModal({ isOpen, onClose, onBookingCreated, cur
             <div className="success-icon-wrap">
               <CheckCircle size={48} className="text-success" />
             </div>
-            <h4>Booking Confirmed!</h4>
-            <p className="success-subtitle">Slot reserved and laundry ticket generated</p>
+            <h4>{currentUser?.role === 'student' ? 'Laundry Request Submitted!' : 'Booking Confirmed!'}</h4>
+            <p className="success-subtitle">
+              {currentUser?.role === 'student' 
+                ? 'Your laundry slot request has been sent to the admin desk for acceptance.' 
+                : 'Slot reserved and laundry ticket generated'}
+            </p>
 
             <div className="pickup-token-display">
               <span className="token-small-label">PICKUP TOKEN</span>
@@ -200,7 +199,9 @@ export default function NewBookingModal({ isOpen, onClose, onBookingCreated, cur
             </div>
 
             <p className="token-instructions">
-              Take clothes to the hostel laundry counter during your reserved time slot.
+              {currentUser?.role === 'student'
+                ? 'Status: Pending Admin Confirmation. Once accepted by staff, bring your clothes to the counter during your reserved time slot.'
+                : 'Take clothes to the hostel laundry counter during the reserved time slot.'}
             </p>
 
             <div className="modal-actions">

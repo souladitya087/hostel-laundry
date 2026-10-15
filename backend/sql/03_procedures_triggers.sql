@@ -58,7 +58,7 @@ proc_label: BEGIN
     -- 3. Calculate current active bookings for this slot
     SELECT COUNT(*) INTO v_current_booked 
     FROM bookings 
-    WHERE slot_id = p_slot_id AND status != 'Cancelled';
+    WHERE slot_id = p_slot_id AND status NOT IN ('Cancelled', 'Rejected');
 
     -- 4. Check slot capacity constraint
     IF v_current_booked >= v_capacity THEN
@@ -125,7 +125,7 @@ BEGIN
     DECLARE v_cap INT DEFAULT 0;
     DECLARE v_booked INT DEFAULT 0;
     SELECT COALESCE(MAX(capacity), 0) INTO v_cap FROM slots WHERE slot_id = p_slot_id;
-    SELECT COUNT(*) INTO v_booked FROM bookings WHERE slot_id = p_slot_id AND status != 'Cancelled';
+    SELECT COUNT(*) INTO v_booked FROM bookings WHERE slot_id = p_slot_id AND status NOT IN ('Cancelled', 'Rejected');
     RETURN GREATEST(0, v_cap - v_booked);
 END$$
 

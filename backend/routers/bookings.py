@@ -23,6 +23,10 @@ class BookingCreate(BaseModel):
 
 class BookingStatusUpdate(BaseModel):
     status: str
+    notes: Optional[str] = None
+
+class BookingRejectInput(BaseModel):
+    reason: Optional[str] = None
 
 @router.get("")
 def get_bookings(
@@ -194,7 +198,7 @@ def create_booking(data: BookingCreate):
         raise HTTPException(status_code=400, detail="The selected slot is currently under maintenance.")
 
     count_res = execute_query(
-        "SELECT COUNT(*) as booked FROM bookings WHERE slot_id = ? AND status != 'Cancelled';", 
+        "SELECT COUNT(*) as booked FROM bookings WHERE slot_id = ? AND status NOT IN ('Cancelled', 'Rejected');", 
         (data.slot_id,), 
         fetch="one"
     )
@@ -267,30 +271,94 @@ def create_booking(data: BookingCreate):
 
 @router.patch("/{booking_id}/status")
 def update_booking_status(booking_id: int, data: BookingStatusUpdate):
-    valid_statuses = ['Pending', 'In Progress', 'Ready for Pickup', 'Completed', 'Cancelled']
+    valid_statuses = ['Pending', 'Accepted', 'In Progress', 'Ready for Pickup', 'Completed', 'Cancelled', 'Rejected']
     if data.status not in valid_statuses:
         raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {', '.join(valid_statuses)}")
 
-    booking = execute_query("SELECT slot_id, status FROM bookings WHERE booking_id = ?;", (booking_id,), fetch="one")
+    booking = execute_query("SELECT slot_id, status, notes FROM bookings WHERE booking_id = ?;", (booking_id,), fetch="one")
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found.")
 
-    execute_query("UPDATE bookings SET status = ? WHERE booking_id = ?;", (data.status, booking_id), fetch="none")
+    old_status = booking["status"]
+    slot_id = booking["slot_id"]
 
-    # If cancelled, check if slot should revert to 'Available'
-    if data.status == "Cancelled":
-        slot_id = booking["slot_id"]
+    if data.notes is not None:
+        execute_query("UPDATE bookings SET status = ?, notes = ? WHERE booking_id = ?;", (data.status, data.notes, booking_id), fetch="none")
+    else:
+        execute_query("UPDATE bookings SET status = ? WHERE booking_id = ?;", (data.status, booking_id), fetch="none")
+
+    # If transitioning to Cancelled or Rejected, release slot capacity if it was Full
+    if data.status in ("Cancelled", "Rejected"):
         slot = execute_query("SELECT capacity, status FROM slots WHERE slot_id = ?;", (slot_id,), fetch="one")
         if slot and slot["status"] == "Full":
             count_res = execute_query(
-                "SELECT COUNT(*) as booked FROM bookings WHERE slot_id = ? AND status != 'Cancelled';", 
+                "SELECT COUNT(*) as booked FROM bookings WHERE slot_id = ? AND status NOT IN ('Cancelled', 'Rejected');", 
                 (slot_id,), 
                 fetch="one"
             )
             if count_res and count_res["booked"] < slot["capacity"]:
                 execute_query("UPDATE slots SET status = 'Available' WHERE slot_id = ?;", (slot_id,), fetch="none")
 
-    return {"message": f"Booking status updated to {data.status}"}
+    # If transitioning from Cancelled or Rejected back to an active status, verify capacity
+    elif old_status in ("Cancelled", "Rejected"):
+        slot = execute_query("SELECT capacity, status FROM slots WHERE slot_id = ?;", (slot_id,), fetch="one")
+        if slot:
+            count_res = execute_query(
+                "SELECT COUNT(*) as booked FROM bookings WHERE slot_id = ? AND status NOT IN ('Cancelled', 'Rejected');", 
+                (slot_id,), 
+                fetch="one"
+            )
+            if count_res and count_res["booked"] >= slot["capacity"]:
+                execute_query("UPDATE slots SET status = 'Full' WHERE slot_id = ?;", (slot_id,), fetch="none")
+
+    return {"message": f"Booking status updated to {data.status}", "booking_id": booking_id, "status": data.status}
+
+@router.post("/{booking_id}/accept")
+def accept_booking(booking_id: int):
+    booking = execute_query("SELECT booking_id, slot_id, status, pickup_code FROM bookings WHERE booking_id = ?;", (booking_id,), fetch="one")
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found.")
+
+    execute_query("UPDATE bookings SET status = 'Accepted' WHERE booking_id = ?;", (booking_id,), fetch="none")
+    return {
+        "message": f"Booking request #{booking_id} ({booking['pickup_code']}) accepted successfully!",
+        "booking_id": booking_id,
+        "pickup_code": booking["pickup_code"],
+        "status": "Accepted"
+    }
+
+@router.post("/{booking_id}/reject")
+def reject_booking(booking_id: int, data: Optional[BookingRejectInput] = None):
+    booking = execute_query("SELECT booking_id, slot_id, status, notes, pickup_code FROM bookings WHERE booking_id = ?;", (booking_id,), fetch="one")
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found.")
+
+    reason = data.reason.strip() if (data and data.reason and data.reason.strip()) else "Declined by hostel laundry admin"
+    current_notes = booking["notes"] or ""
+    append_str = f"[Admin Note: Rejected - {reason}]"
+    updated_notes = f"{current_notes}\n{append_str}".strip() if current_notes else append_str
+
+    execute_query("UPDATE bookings SET status = 'Rejected', notes = ? WHERE booking_id = ?;", (updated_notes, booking_id), fetch="none")
+
+    # Check if slot capacity should revert to Available
+    slot_id = booking["slot_id"]
+    slot = execute_query("SELECT capacity, status FROM slots WHERE slot_id = ?;", (slot_id,), fetch="one")
+    if slot and slot["status"] == "Full":
+        count_res = execute_query(
+            "SELECT COUNT(*) as booked FROM bookings WHERE slot_id = ? AND status NOT IN ('Cancelled', 'Rejected');", 
+            (slot_id,), 
+            fetch="one"
+        )
+        if count_res and count_res["booked"] < slot["capacity"]:
+            execute_query("UPDATE slots SET status = 'Available' WHERE slot_id = ?;", (slot_id,), fetch="none")
+
+    return {
+        "message": f"Booking request #{booking_id} ({booking['pickup_code']}) has been rejected.",
+        "booking_id": booking_id,
+        "pickup_code": booking["pickup_code"],
+        "status": "Rejected",
+        "reason": reason
+    }
 
 @router.delete("/{booking_id}")
 def cancel_booking(booking_id: int):

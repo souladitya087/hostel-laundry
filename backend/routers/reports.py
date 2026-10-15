@@ -9,12 +9,23 @@ def get_dashboard_kpis():
     students_res = execute_query("SELECT COUNT(*) as count FROM students;", fetch="one")
     total_students = students_res["count"] if students_res else 0
 
-    # 2. Active Bookings (Pending, In Progress, Ready for Pickup)
+    # 2. Active Bookings (Pending, Accepted, In Progress, Ready for Pickup)
     active_res = execute_query(
-        "SELECT COUNT(*) as count FROM bookings WHERE status IN ('Pending', 'In Progress', 'Ready for Pickup');", 
+        "SELECT COUNT(*) as count FROM bookings WHERE status IN ('Pending', 'Accepted', 'In Progress', 'Ready for Pickup');", 
         fetch="one"
     )
     active_bookings = active_res["count"] if active_res else 0
+
+    # 2b. Pending Requests (Awaiting Admin Review)
+    pending_res = execute_query("SELECT COUNT(*) as count FROM bookings WHERE status = 'Pending';", fetch="one")
+    pending_requests = pending_res["count"] if pending_res else 0
+
+    # 2c. Ongoing Orders (Accepted, In Progress, Ready for Pickup)
+    ongoing_res = execute_query(
+        "SELECT COUNT(*) as count FROM bookings WHERE status IN ('Accepted', 'In Progress', 'Ready for Pickup');", 
+        fetch="one"
+    )
+    ongoing_bookings = ongoing_res["count"] if ongoing_res else 0
 
     # 3. Total Completed Bookings
     completed_res = execute_query("SELECT COUNT(*) as count FROM bookings WHERE status = 'Completed';", fetch="one")
@@ -32,7 +43,7 @@ def get_dashboard_kpis():
     occupancy_sql = """
         SELECT 
             SUM(capacity) as total_capacity,
-            (SELECT COUNT(*) FROM bookings WHERE status != 'Cancelled') as total_booked
+            (SELECT COUNT(*) FROM bookings WHERE status NOT IN ('Cancelled', 'Rejected')) as total_booked
         FROM slots;
     """
     occ_res = execute_query(occupancy_sql, fetch="one")
@@ -43,6 +54,8 @@ def get_dashboard_kpis():
     return {
         "total_students": total_students,
         "active_bookings": active_bookings,
+        "pending_requests": pending_requests,
+        "ongoing_bookings": ongoing_bookings,
         "completed_bookings": completed_bookings,
         "total_revenue": total_revenue,
         "total_clothes_washed": total_clothes,
@@ -79,7 +92,7 @@ def get_service_analytics():
             COALESCE(SUM(bi.line_total), 0.0) as total_revenue
         FROM services srv
         LEFT JOIN booking_items bi ON srv.service_id = bi.service_id
-        LEFT JOIN bookings b ON bi.booking_id = b.booking_id AND b.status != 'Cancelled'
+        LEFT JOIN bookings b ON bi.booking_id = b.booking_id AND b.status NOT IN ('Cancelled', 'Rejected')
         GROUP BY srv.service_id
         ORDER BY total_revenue DESC;
     """
@@ -95,9 +108,9 @@ def get_slot_utilization():
             sl.end_time,
             sl.capacity,
             sl.status as slot_status,
-            COUNT(CASE WHEN b.status != 'Cancelled' THEN b.booking_id END) as booked_count,
-            (sl.capacity - COUNT(CASE WHEN b.status != 'Cancelled' THEN b.booking_id END)) as available_seats,
-            ROUND((CAST(COUNT(CASE WHEN b.status != 'Cancelled' THEN b.booking_id END) AS REAL) / sl.capacity) * 100, 1) as occupancy_pct
+            COUNT(CASE WHEN b.status NOT IN ('Cancelled', 'Rejected') THEN b.booking_id END) as booked_count,
+            (sl.capacity - COUNT(CASE WHEN b.status NOT IN ('Cancelled', 'Rejected') THEN b.booking_id END)) as available_seats,
+            ROUND((CAST(COUNT(CASE WHEN b.status NOT IN ('Cancelled', 'Rejected') THEN b.booking_id END) AS REAL) / sl.capacity) * 100, 1) as occupancy_pct
         FROM slots sl
         LEFT JOIN bookings b ON sl.slot_id = b.slot_id
         GROUP BY sl.slot_id

@@ -259,7 +259,76 @@ class TestAuthAndPortalE2E(unittest.TestCase):
         self.assertIn("student_email", sneha_b)
         self.assertEqual(sneha_b["student_email"], "sneha.ec24@campus.edu")
         self.assertTrue(len(sneha_b["items"]) > 0)
-        print(f"Completed order verified: {sneha_b['pickup_code']} - {sneha_b['items'][0]['service_name']} ({sneha_b['booking_status']})")
+    def test_14_booking_slot_request_and_admin_accept_reject_flow(self):
+        print("\n[TEST 14] Testing student slot booking request & admin accept/reject flow...")
+        # 1. Student creates booking request
+        booking_payload = {
+            "student_id": 1,
+            "slot_id": 2,
+            "items": [{"service_id": 1, "quantity": 2}, {"service_id": 6, "quantity": 1}],
+            "notes": "Testing slot request workflow"
+        }
+        create_res = client.post("/api/bookings", json=booking_payload)
+        self.assertEqual(create_res.status_code, 201)
+        created = create_res.json()
+        b_id = created["booking_id"]
+        
+        # Verify initial status is Pending
+        b_info = client.get(f"/api/bookings/{b_id}").json()
+        self.assertEqual(b_info["booking_status"], "Pending")
+
+        # 2. Admin accepts request
+        accept_res = client.post(f"/api/bookings/{b_id}/accept")
+        self.assertEqual(accept_res.status_code, 200)
+        self.assertEqual(accept_res.json()["status"], "Accepted")
+        
+        # Verify status in database
+        b_info = client.get(f"/api/bookings/{b_id}").json()
+        self.assertEqual(b_info["booking_status"], "Accepted")
+
+        # 3. Create another request to test reject
+        create_res2 = client.post("/api/bookings", json=booking_payload)
+        self.assertEqual(create_res2.status_code, 201)
+        b_id2 = create_res2.json()["booking_id"]
+
+        # Admin rejects request
+        reject_res = client.post(f"/api/bookings/{b_id2}/reject", json={"reason": "Laundry machine temporarily occupied"})
+        self.assertEqual(reject_res.status_code, 200)
+        self.assertEqual(reject_res.json()["status"], "Rejected")
+
+        b_info2 = client.get(f"/api/bookings/{b_id2}").json()
+        self.assertEqual(b_info2["booking_status"], "Rejected")
+        self.assertIn("temporarily occupied", b_info2["notes"])
+
+        # Clean up test records
+        execute_query("DELETE FROM booking_items WHERE booking_id IN (?, ?);", (b_id, b_id2), fetch="none")
+        execute_query("DELETE FROM bookings WHERE booking_id IN (?, ?);", (b_id, b_id2), fetch="none")
+        print("Student slot booking, admin accept, and admin reject verified successfully.")
+
+    def test_15_admin_ongoing_status_updates(self):
+        print("\n[TEST 15] Testing admin updating status of ongoing order...")
+        # Create an order
+        booking_payload = {
+            "student_id": 2,
+            "slot_id": 2,
+            "items": [{"service_id": 2, "quantity": 1}],
+            "notes": "Ongoing order test"
+        }
+        res = client.post("/api/bookings", json=booking_payload)
+        b_id = res.json()["booking_id"]
+
+        # Transition through ongoing order states: Accepted -> In Progress -> Ready for Pickup -> Completed
+        lifecycle = ["Accepted", "In Progress", "Ready for Pickup", "Completed"]
+        for st in lifecycle:
+            patch_res = client.patch(f"/api/bookings/{b_id}/status", json={"status": st})
+            self.assertEqual(patch_res.status_code, 200)
+            cur_info = client.get(f"/api/bookings/{b_id}").json()
+            self.assertEqual(cur_info["booking_status"], st)
+
+        # Clean up
+        execute_query("DELETE FROM booking_items WHERE booking_id = ?;", (b_id,), fetch="none")
+        execute_query("DELETE FROM bookings WHERE booking_id = ?;", (b_id,), fetch="none")
+        print("Ongoing order status progression successfully verified.")
 
 if __name__ == "__main__":
     unittest.main()

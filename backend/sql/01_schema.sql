@@ -59,7 +59,7 @@ CREATE TABLE bookings (
     student_id INT NOT NULL,
     slot_id INT NOT NULL,
     booking_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    status ENUM('Pending', 'In Progress', 'Ready for Pickup', 'Completed', 'Cancelled') DEFAULT 'Pending',
+    status ENUM('Pending', 'Accepted', 'In Progress', 'Ready for Pickup', 'Completed', 'Cancelled', 'Rejected') DEFAULT 'Pending',
     total_amount DECIMAL(10, 2) NOT NULL DEFAULT 0.00 CHECK (total_amount >= 0),
     pickup_code VARCHAR(20) NOT NULL UNIQUE,
     notes TEXT,

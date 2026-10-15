@@ -55,7 +55,7 @@ SELECT
     (sl.capacity - COUNT(b.booking_id)) AS available_capacity,
     ROUND((COUNT(b.booking_id) / sl.capacity) * 100, 1) AS occupancy_percent
 FROM slots sl
-LEFT JOIN bookings b ON sl.slot_id = b.slot_id AND b.status != 'Cancelled'
+LEFT JOIN bookings b ON sl.slot_id = b.slot_id AND b.status NOT IN ('Cancelled', 'Rejected')
 GROUP BY sl.slot_id, sl.slot_date, sl.start_time, sl.end_time, sl.capacity, sl.status;
 
 -- 3. SERVICE REVENUE & ANALYTICS VIEW
@@ -71,7 +71,7 @@ SELECT
     COALESCE(SUM(bi.line_total), 0.00) AS total_revenue_generated
 FROM services srv
 LEFT JOIN booking_items bi ON srv.service_id = bi.service_id
-LEFT JOIN bookings b ON bi.booking_id = b.booking_id AND b.status != 'Cancelled'
+LEFT JOIN bookings b ON bi.booking_id = b.booking_id AND b.status NOT IN ('Cancelled', 'Rejected')
 GROUP BY srv.service_id, srv.service_name, srv.unit_price;
 
 -- 4. DAILY FINANCIAL SUMMARY VIEW

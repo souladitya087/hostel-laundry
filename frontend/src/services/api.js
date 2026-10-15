@@ -77,7 +77,15 @@ export const api = {
   },
   getBooking: (id) => request(`/bookings/${id}`),
   createBooking: (data) => request('/bookings', { method: 'POST', body: JSON.stringify(data) }),
-  updateBookingStatus: (id, status) => request(`/bookings/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+  updateBookingStatus: (id, status, notes = null) => request(`/bookings/${id}/status`, { 
+    method: 'PATCH', 
+    body: JSON.stringify(notes !== null ? { status, notes } : { status }) 
+  }),
+  acceptBooking: (id) => request(`/bookings/${id}/accept`, { method: 'POST' }),
+  rejectBooking: (id, reason = '') => request(`/bookings/${id}/reject`, { 
+    method: 'POST', 
+    body: JSON.stringify({ reason }) 
+  }),
   cancelBooking: (id) => request(`/bookings/${id}`, { method: 'DELETE' }),
 
   // Payments

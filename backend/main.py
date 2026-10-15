@@ -37,6 +37,12 @@ app.include_router(payments.router, prefix=settings.API_PREFIX)
 app.include_router(reports.router, prefix=settings.API_PREFIX)
 app.include_router(db_admin.router, prefix=settings.API_PREFIX)
 
+from fastapi.responses import Response
+
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    return Response(status_code=204)
+
 @app.get("/")
 def root():
     db_info = test_database_connection()

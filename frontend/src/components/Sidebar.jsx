@@ -18,7 +18,8 @@ export default function Sidebar({
   setCurrentTab, 
   isMobileOpen, 
   setIsMobileOpen,
-  role 
+  role,
+  pendingCount = 0
 }) {
   const isAdmin = role === 'admin';
 
@@ -96,6 +97,9 @@ export default function Sidebar({
               >
                 <Icon size={18} className="nav-icon" />
                 <span className="nav-label">{item.label}</span>
+                {isAdmin && item.id === 'bookings' && pendingCount > 0 && (
+                  <span className="sidebar-pending-badge">{pendingCount}</span>
+                )}
                 {isActive && <div className="nav-indicator" />}
               </button>
             );

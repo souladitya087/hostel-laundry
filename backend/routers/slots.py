@@ -29,9 +29,9 @@ def get_slots():
             sl.end_time,
             sl.capacity,
             sl.status as slot_status,
-            COUNT(CASE WHEN b.status != 'Cancelled' THEN b.booking_id END) as booked_count,
-            (sl.capacity - COUNT(CASE WHEN b.status != 'Cancelled' THEN b.booking_id END)) as available_capacity,
-            ROUND((CAST(COUNT(CASE WHEN b.status != 'Cancelled' THEN b.booking_id END) AS REAL) / sl.capacity) * 100, 1) as occupancy_percent
+            COUNT(CASE WHEN b.status NOT IN ('Cancelled', 'Rejected') THEN b.booking_id END) as booked_count,
+            (sl.capacity - COUNT(CASE WHEN b.status NOT IN ('Cancelled', 'Rejected') THEN b.booking_id END)) as available_capacity,
+            ROUND((CAST(COUNT(CASE WHEN b.status NOT IN ('Cancelled', 'Rejected') THEN b.booking_id END) AS REAL) / sl.capacity) * 100, 1) as occupancy_percent
         FROM slots sl
         LEFT JOIN bookings b ON sl.slot_id = b.slot_id
         GROUP BY sl.slot_id
@@ -49,8 +49,8 @@ def get_available_slots():
             sl.end_time,
             sl.capacity,
             sl.status as slot_status,
-            COUNT(CASE WHEN b.status != 'Cancelled' THEN b.booking_id END) as booked_count,
-            (sl.capacity - COUNT(CASE WHEN b.status != 'Cancelled' THEN b.booking_id END)) as available_capacity
+            COUNT(CASE WHEN b.status NOT IN ('Cancelled', 'Rejected') THEN b.booking_id END) as booked_count,
+            (sl.capacity - COUNT(CASE WHEN b.status NOT IN ('Cancelled', 'Rejected') THEN b.booking_id END)) as available_capacity
         FROM slots sl
         LEFT JOIN bookings b ON sl.slot_id = b.slot_id
         WHERE sl.status = 'Available'
@@ -64,7 +64,7 @@ def get_available_slots():
 def get_slot(slot_id: int):
     sql = """
         SELECT sl.*, 
-               COUNT(CASE WHEN b.status != 'Cancelled' THEN b.booking_id END) as booked_count
+               COUNT(CASE WHEN b.status NOT IN ('Cancelled', 'Rejected') THEN b.booking_id END) as booked_count
         FROM slots sl
         LEFT JOIN bookings b ON sl.slot_id = b.slot_id
         WHERE sl.slot_id = ?

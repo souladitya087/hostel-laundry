@@ -119,9 +119,16 @@ The application enforces strict role segregation between resident students and h
 
 ### 2. 🛡️ Staff Administrator Console
 * **Dedicated Admin Authentication**: Administrative access via `admin` or `admin@campus.edu` with admin password (`admin123`).
-* **Operations Center KPIs**: Real-time summary cards tracking Active Orders, Today's Collected Revenue, Total Clothes Cleaned, and Slot Occupancy Percentage.
-* **Global Order Processing**: Search, inspect, and transition laundry orders for **all students across campus** through workflow stages:
-  `Submitted (Pending)` ➔ `Washing & Ironing (In Progress)` ➔ `Ready for Pickup` ➔ `Completed`
+* **Latest Booking Requests Queue (Accept & Reject)**:
+  * Prominent real-time request review queue displaying incoming student slot reservations with student name, hostel room, contact info, slot timing, clothes breakdown, total bill, and notes.
+  * **1-Click Request Acceptance**: Instantly approves the booking (`status = 'Accepted'`) and transfers it to the active laundry processing queue.
+  * **1-Click Request Rejection**: Allows staff to reject requests with selected templates (e.g., *capacity reached*, *service unavailable*, *maintenance*) or custom explanations (`status = 'Rejected'`), while automatically releasing reserved slot capacity back to the available pool.
+* **Ongoing Orders & Live Status Control**:
+  * Real-time pipeline monitoring all active orders (`Accepted`, `In Progress`, `Ready for Pickup`).
+  * **Stage Advancement Buttons**: Quick one-click status transitions (`Accepted` ➔ `Start Wash` ➔ `Mark Ready` ➔ `Complete`).
+  * **Direct Status Selector Dropdown**: Enables staff to change any order to any valid status (`Pending`, `Accepted`, `In Progress`, `Ready for Pickup`, `Completed`, `Cancelled`, `Rejected`).
+* **Live Auto-Sync & Real-Time Counter Badges**: Background auto-refresh polls every 6 seconds with a live pulsating indicator dot and updates the sidebar request badge across the portal.
+* **Operations Center KPIs**: Real-time summary cards tracking Pending Requests, Ongoing Orders, Today's Collected Revenue, Total Clothes Cleaned, and Slot Occupancy Percentage.
 * **Slot Capacity Schedules**: Add, modify, or close daily collection windows and adjust counter capacity quotas.
 * **Service Rate Management**: Configure laundry categories, per-pair/piece pricing, and turnaround guarantees.
 * **1-Click DBMS Reseed**: Easily reset sample data to default demonstration state during viva evaluations.
@@ -132,12 +139,15 @@ The application enforces strict role segregation between resident students and h
 
 The student order view is designed for full transparency, real-time tracking, and clear billing:
 
-1. **Live Order Status Progress Stepper**:
-   * Interactive 4-stage visual progress pipeline:
-     `Submitted` ➔ `Washing & Ironing` ➔ `Ready for Pickup` ➔ `Completed`
-   * Dynamic progress track fill bar reflects real-time order state (15% ➔ 50% ➔ 85% ➔ 100%).
-   * High-visibility **"Order Ready for Collection!" alert banner** prompts students as soon as laundry reaches the counter.
-   * Clear status representation for cancelled bookings.
+1. **Live Order Status Progress Stepper (5 Stages)**:
+   * Interactive 5-stage visual progress pipeline:
+     `Submitted (Pending)` ➔ `Accepted` ➔ `Washing & Ironing` ➔ `Ready for Pickup` ➔ `Completed`
+   * Dynamic progress track fill bar reflects real-time order state (10% ➔ 35% ➔ 62% ➔ 88% ➔ 100%).
+   * **Contextual Alert Banners**:
+     * **Pending Review**: Informs student that the booking request is awaiting staff review.
+     * **Accepted**: Informs student that the booking was approved and prompts them to drop off clothes during their reserved slot.
+     * **Ready for Pickup**: High-visibility banner prompting student to collect clean garments using their counter token.
+     * **Rejected / Cancelled**: Explains rejection rationale with admin notes without billing the student.
 
 2. **Laundry Items Classified by Pair / Piece**:
    * Granular categorization preventing billing ambiguity:
@@ -200,7 +210,7 @@ students (1) ───────────< bookings (N) ──────�
      * `student_id` → `students(student_id)` (`ON DELETE RESTRICT ON UPDATE CASCADE`)
      * `slot_id` → `slots(slot_id)` (`ON DELETE RESTRICT ON UPDATE CASCADE`)
    * **Check Constraint**: `total_amount >= 0`
-   * **Attributes**: `student_id`, `slot_id`, `booking_date`, `status` (`Pending`, `In Progress`, `Ready for Pickup`, `Completed`, `Cancelled`), `total_amount`, `pickup_code`, `notes`
+    * **Attributes**: `student_id`, `slot_id`, `booking_date`, `status` (`Pending`, `Accepted`, `In Progress`, `Ready for Pickup`, `Completed`, `Cancelled`, `Rejected`), `total_amount`, `pickup_code`, `notes`
 
 5. **`booking_items`**: Line items per booking detailing clothes and quantities.
    * **Primary Key**: `item_id`
@@ -245,7 +255,7 @@ The repository includes a comprehensive automated test suite (`test_e2e_verifica
 python test_e2e_verification.py
 ```
 
-### Verified Test Scenarios (13/13 Passing):
+### Verified Test Scenarios (15/15 Passing):
 - ✅ **Database Connectivity**: Validates live engine connection (MySQL 8.0 or embedded SQLite fallback).
 - ✅ **Demo Users Endpoint**: Validates `/api/auth/demo-users` returns seeded credentials.
 - ✅ **Student Authentication**: Student login with College Email & Password (`aditya.cs24@campus.edu`).
@@ -259,6 +269,8 @@ python test_e2e_verification.py
 - ✅ **Registration Sanity Validation**: Enforces non-empty names, valid emails, and minimum password lengths.
 - ✅ **Duplicate Email Protection**: Graceful rejection of duplicate email collisions with HTTP 400 (no 500 crash).
 - ✅ **Order States**: Query handling for Completed and Cancelled order states.
+- ✅ **Student Booking Request & Admin Accept/Reject Flow**: Verifies request creation, admin acceptance, rejection with reason, and slot capacity restoration.
+- ✅ **Admin Ongoing Status Updates**: Verifies status lifecycle progression (`Accepted` ➔ `In Progress` ➔ `Ready for Pickup` ➔ `Completed`).
 
 ---
 

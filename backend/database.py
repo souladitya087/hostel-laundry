@@ -171,7 +171,7 @@ def init_db(force_reseed: bool = False):
                 cur.execute("SHOW TABLES LIKE 'students';")
                 exists = cur.fetchone()
                 if exists and not force_reseed:
-                    # Ensure new columns exist for existing databases
+                    # Ensure new columns and enum values exist for existing databases
                     try:
                         cur.execute("SHOW COLUMNS FROM students LIKE 'password';")
                         if not cur.fetchone():
@@ -179,6 +179,7 @@ def init_db(force_reseed: bool = False):
                         cur.execute("SHOW COLUMNS FROM services LIKE 'unit_type';")
                         if not cur.fetchone():
                             cur.execute("ALTER TABLE services ADD COLUMN unit_type VARCHAR(20) DEFAULT 'pair';")
+                        cur.execute("ALTER TABLE bookings MODIFY COLUMN status ENUM('Pending', 'Accepted', 'In Progress', 'Ready for Pickup', 'Completed', 'Cancelled', 'Rejected') DEFAULT 'Pending';")
                     except Exception as col_err:
                         print("Schema migration note (MySQL):", col_err)
                     return {"engine": "MySQL 8.0", "status": "already_initialized"}
@@ -388,7 +389,7 @@ def init_db(force_reseed: bool = False):
                     (sl.capacity - COUNT(b.booking_id)) AS available_capacity,
                     ROUND((CAST(COUNT(b.booking_id) AS REAL) / sl.capacity) * 100, 1) AS occupancy_percent
                 FROM slots sl
-                LEFT JOIN bookings b ON sl.slot_id = b.slot_id AND b.status != 'Cancelled'
+                LEFT JOIN bookings b ON sl.slot_id = b.slot_id AND b.status NOT IN ('Cancelled', 'Rejected')
                 GROUP BY sl.slot_id;
 
                 -- Seed Data
