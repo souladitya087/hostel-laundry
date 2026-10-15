@@ -477,7 +477,7 @@ export default function DashboardView({ currentUser, onOpenNewBooking, onViewRec
               <div className="active-items-section">
                 <div className="active-items-header">
                   <span>Laundry Items & Quantities</span>
-                  <span>{activeOrder.total_clothes || (activeOrder.items?.reduce((s, it) => s + it.quantity, 0))} Total Items</span>
+                  <span>{activeOrder.total_clothes || (activeOrder.items ? activeOrder.items.reduce((s, it) => s + (it.quantity || 0), 0) : 0)} Total Items</span>
                 </div>
 
                 {activeOrder.items && activeOrder.items.length > 0 ? (
@@ -576,7 +576,7 @@ export default function DashboardView({ currentUser, onOpenNewBooking, onViewRec
                         {b.items && b.items.length > 0 ? (
                           b.items.map((it, idx) => (
                             <span key={idx} className="item-tag-chip">
-                              {it.quantity} {it.unit_type === 'piece' ? (it.quantity > 1 ? 'pcs' : 'pc') : (it.quantity > 1 ? 'pairs' : 'pair')} {it.service_name.replace(/\s*\([^)]*\)/, '')}
+                              {it.quantity} {it.unit_type === 'piece' ? (it.quantity > 1 ? 'pcs' : 'pc') : (it.quantity > 1 ? 'pairs' : 'pair')} {(it.service_name || '').replace(/\s*\([^)]*\)/, '')}
                             </span>
                           ))
                         ) : (
@@ -757,7 +757,7 @@ export default function DashboardView({ currentUser, onOpenNewBooking, onViewRec
                         {b.items && b.items.length > 0 ? (
                           b.items.map((it, idx) => (
                             <span key={idx} className="item-tag-chip">
-                              {it.quantity} {it.unit_type === 'piece' ? (it.quantity > 1 ? 'pcs' : 'pc') : (it.quantity > 1 ? 'pairs' : 'pair')} {it.service_name.replace(/\s*\([^)]*\)/, '')}
+                              {it.quantity} {it.unit_type === 'piece' ? (it.quantity > 1 ? 'pcs' : 'pc') : (it.quantity > 1 ? 'pairs' : 'pair')} {(it.service_name || '').replace(/\s*\([^)]*\)/, '')}
                             </span>
                           ))
                         ) : (
@@ -853,7 +853,7 @@ export default function DashboardView({ currentUser, onOpenNewBooking, onViewRec
                         {b.items && b.items.length > 0 ? (
                           b.items.map((it, idx) => (
                             <span key={idx} className="item-tag-chip">
-                              {it.quantity} {it.unit_type === 'piece' ? (it.quantity > 1 ? 'pcs' : 'pc') : (it.quantity > 1 ? 'pairs' : 'pair')} {it.service_name.replace(/\s*\([^)]*\)/, '')}
+                              {it.quantity} {it.unit_type === 'piece' ? (it.quantity > 1 ? 'pcs' : 'pc') : (it.quantity > 1 ? 'pairs' : 'pair')} {(it.service_name || '').replace(/\s*\([^)]*\)/, '')}
                             </span>
                           ))
                         ) : (

@@ -39,7 +39,6 @@ export default function NewBookingModal({ isOpen, onClose, onBookingCreated, cur
   }, [isOpen]);
 
   const resetForm = () => {
-    setStep(1);
     setSelectedStudentId('');
     setSelectedSlotId('');
     setItemQuantities({});

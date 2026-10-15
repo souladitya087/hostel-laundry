@@ -300,7 +300,7 @@ export default function BookingsView({ currentUser, onOpenNewBooking, onViewRece
                           <div className="items-tags-list">
                             {b.items.map((it, idx) => (
                               <span key={idx} className="item-tag-chip">
-                                <strong>{it.quantity} {it.unit_type === 'piece' ? (it.quantity > 1 ? 'pcs' : 'pc') : (it.quantity > 1 ? 'pairs' : 'pair')}</strong>&nbsp;{it.service_name.replace(/\s*\([^)]*\)/, '')}
+                                <strong>{it.quantity} {it.unit_type === 'piece' ? (it.quantity > 1 ? 'pcs' : 'pc') : (it.quantity > 1 ? 'pairs' : 'pair')}</strong>&nbsp;{(it.service_name || '').replace(/\s*\([^)]*\)/, '')}
                               </span>
                             ))}
                           </div>
